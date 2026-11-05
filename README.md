@@ -45,6 +45,7 @@ pentest vpn up|down|status  # tunnel VPN (OpenVPN) du lab actif
 pentest killswitch on|off   # kill switch nftables, indépendant du VPN
 pentest panic               # coupe VPN + kill switch, réseau normal immédiat
 pentest tools [containers]  # outils présents/absents ; option conteneur
+pentest install [outils…]   # interface d'installation (menu TUI, confirmation)
 ```
 
 **Raccourci** : `SUPER + SHIFT + ALT + P` bascule le mode (`pentest-toggle`) —
@@ -63,6 +64,18 @@ toi-même :
   conteneur jetable (image BlackArch ou Kali), l'hôte reste propre, pas de root
   pour l'outillage. Alternatives : paquets Arch (simple mais pollue l'hôte) ou
   dépôt BlackArch (complet mais gros dépôt tiers sur l'hôte).
+
+### Interface d'installation : `pentest install`
+
+Menu **TUI (gum)** pour installer facilement les outils cyber manquants :
+coche ceux voulus (espace), confirme, c'est installé. Chaque outil connaît son
+**paquet** et sa **source** (dépôts officiels via `pacman`, ou AUR via `yay`) —
+noms vérifiés, définis dans `tools.list`. Rien n'est installé sans confirmation.
+
+```bash
+pentest install           # menu des outils manquants
+pentest install nmap ffuf # installe directement (nmap=officiel, ffuf=AUR)
+```
 
 ## Limites connues
 

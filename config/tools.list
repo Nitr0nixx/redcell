@@ -1,45 +1,51 @@
-# Liste des outils vérifiés par « pentest tools ».
-# - Une ligne par outil : le nom de la COMMANDE (ce qui est cherché dans le PATH).
-# - Les lignes « #: Titre » sont des en-têtes de catégorie affichés.
-# - Les autres lignes « # ... » sont des commentaires ignorés.
-# Édite librement : AUCUN outil n'est installé automatiquement.
+# Outils vérifiés par « pentest tools » et proposés par « pentest install ».
+#
+# Format : binaire|paquet|source
+#   binaire : la commande cherchée dans le PATH (présence).
+#   paquet  : nom du paquet à installer.
+#   source  : pacman (dépôts officiels) ou aur (via yay).
+# Les lignes « #: Titre » sont des en-têtes de catégorie. « # ... » = commentaire.
+#
+# AUCUN outil n'est installé sans ton action : « pentest install » confirme avant.
+# Noms de paquets vérifiés sur ce système (officiel vs AUR).
 
 #: Reconnaissance réseau
-nmap
-masscan
-tcpdump
-dnsrecon
+nmap|nmap|pacman
+masscan|masscan|pacman
+tcpdump|tcpdump|pacman
+dnsrecon|python-dnsrecon|aur
 
 #: Web
-ffuf
-gobuster
-feroxbuster
-nikto
-whatweb
-sqlmap
-wfuzz
+ffuf|ffuf|aur
+gobuster|gobuster|pacman
+feroxbuster|feroxbuster|aur
+nikto|nikto|pacman
+whatweb|whatweb|aur
+sqlmap|sqlmap|pacman
+wfuzz|wfuzz|aur
 
 #: SMB / AD / services
-smbclient
-enum4linux
-responder
-netexec
+smbclient|smbclient|pacman
+enum4linux|enum4linux|aur
+responder|responder|aur
+netexec|netexec|aur
 
 #: Mots de passe
-hydra
-john
-hashcat
+hydra|hydra|pacman
+john|john|pacman
+hashcat|hashcat|pacman
 
 #: Proxy / trafic
-proxychains4
-socat
-ncat
+proxychains4|proxychains-ng|pacman
+socat|socat|pacman
+nc|openbsd-netcat|pacman
+ncat|nmap|pacman
 
 #: Navigateur & proxy d'interception
-firefox
-burpsuite
-zaproxy
+firefox|firefox|pacman
+burpsuite|burpsuite|aur
+zaproxy|zaproxy|pacman
 
-#: Isolation par conteneur (optionnel, voir « pentest tools containers »)
-podman
-distrobox
+#: Isolation par conteneur (optionnel)
+podman|podman|pacman
+distrobox|distrobox|pacman

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# lib/tools.sh — vérification des outils (présent/absent), SANS installation.
-# Liste configurable dans ~/.config/mode-pentest/tools.list.
-# Dépend de lib/common.sh.
+# lib/tools.sh — vérification ET installation guidée des outils.
+# Liste configurable dans ~/.config/mode-pentest/tools.list (binaire|paquet|source).
+# L'installation passe TOUJOURS par une confirmation. Dépend de lib/common.sh.
 
 # Fichier de liste : version utilisateur si présente, sinon celle du projet.
 tools_file() {
@@ -9,32 +9,115 @@ tools_file() {
   if [[ -f "$u" ]]; then printf '%s' "$u"; else printf '%s' "$ROOT_DIR/config/tools.list"; fi
 }
 
-# Affiche la liste avec, pour chaque outil, présent (✓) ou absent (—).
-tools_check() {
+# Itère sur les entrées (hors commentaires/en-têtes) : appelle $1 avec
+# binaire, paquet, source. Les en-têtes « #: » déclenchent $2 avec le titre.
+_tools_each() {
+  local on_entry="$1" on_header="${2:-}" line bin pkg src
   local f; f=$(tools_file)
-  [[ -f "$f" ]] || { err "liste d'outils introuvable : $f"; return 1; }
-  local present=0 absent=0 total=0 line
-
+  [[ -f "$f" ]] || return 1
   while IFS= read -r line; do
-    # En-tête de catégorie « #: Titre ».
-    if [[ "$line" =~ ^#: ]]; then
-      printf '\n%s%s%s\n' "$_c_dim" "${line#\#: }" "$_c_reset"; continue
-    fi
-    # Commentaires et lignes vides.
+    if [[ "$line" =~ ^#: ]]; then [[ -n "$on_header" ]] && "$on_header" "${line#\#: }"; continue; fi
     [[ -z "${line// }" || "${line#\#}" != "$line" ]] && continue
-    local tool; tool=$(printf '%s' "$line" | tr -d '[:space:]')
-    [[ -n "$tool" ]] || continue
-    total=$((total+1))
-    if command -v "$tool" >/dev/null 2>&1; then
-      printf '  %s✓%s %s\n' "$_c_grn" "$_c_reset" "$tool"; present=$((present+1))
-    else
-      printf '  %s—%s %s\n' "$_c_red" "$_c_reset" "$tool"; absent=$((absent+1))
-    fi
+    IFS='|' read -r bin pkg src <<<"$line"
+    bin=${bin// /}; pkg=${pkg// /}; src=${src// /}
+    [[ -n "$bin" ]] || continue
+    [[ -n "$pkg" ]] || pkg="$bin"; [[ -n "$src" ]] || src="pacman"
+    "$on_entry" "$bin" "$pkg" "$src"
   done < "$f"
+}
 
+# Résout un binaire -> "paquet source" (vide si inconnu).
+tools_lookup() {
+  local want="$1" ; _TL_RES=""
+  _tl_match() { [[ "$1" == "$want" ]] && _TL_RES="$2 $3"; }
+  _tools_each _tl_match
+  printf '%s' "$_TL_RES"
+}
+
+# Liste les binaires absents (un par ligne).
+tools_missing() {
+  _tm() { command -v "$1" >/dev/null 2>&1 || printf '%s\n' "$1"; }
+  _tools_each _tm
+}
+
+# Affiche la liste avec présent (✓) / absent (—) et la source des absents.
+tools_check() {
+  local present=0 absent=0 total=0
+  _h() { printf '\n%s%s%s\n' "$_c_dim" "$1" "$_c_reset"; }
+  _e() {
+    total=$((total+1))
+    if command -v "$1" >/dev/null 2>&1; then
+      printf '  %s✓%s %s\n' "$_c_grn" "$_c_reset" "$1"; present=$((present+1))
+    else
+      printf '  %s—%s %-14s %s(%s · %s)%s\n' "$_c_red" "$_c_reset" "$1" "$_c_dim" "$2" "$3" "$_c_reset"; absent=$((absent+1))
+    fi
+  }
+  _tools_each _e _h || { err "liste d'outils introuvable"; return 1; }
   printf '\n%d outils : %d présents, %d absents.\n' "$total" "$present" "$absent"
-  printf 'Aucune installation automatique. Liste : %s\n' "$f"
-  printf "Isolation recommandée : « pentest tools containers ».\n"
+  (( absent > 0 )) && printf 'Installer les manquants : %spentest install%s\n' "$_c_grn" "$_c_reset"
+  printf 'Liste : %s\n' "$(tools_file)"
+}
+
+# Installe des outils. Sans argument : menu TUI (gum) des manquants.
+# Avec arguments : installe ces binaires directement.
+tools_install() {
+  local wanted=("$@")
+
+  # Sélection interactive si aucun argument.
+  if [[ ${#wanted[@]} -eq 0 ]]; then
+    local missing; missing=$(tools_missing)
+    [[ -n "$missing" ]] || { ok "tous les outils de la liste sont déjà installés."; return 0; }
+    if ! command -v gum >/dev/null 2>&1; then
+      err "gum introuvable pour le menu. Donne les outils en argument : pentest install nmap ffuf"
+      printf 'Manquants :\n%s\n' "$missing"; return 1
+    fi
+    mapfile -t wanted < <(printf '%s\n' "$missing" | gum choose --no-limit \
+      --header "Espace = cocher · Entrée = valider · Ctrl+C = annuler")
+    [[ ${#wanted[@]} -gt 0 ]] || { log "aucun outil sélectionné."; return 0; }
+  fi
+
+  # Répartit les paquets par source.
+  local pac=() aur=() unknown=() b res pkg src
+  for b in "${wanted[@]}"; do
+    [[ -n "${b// }" ]] || continue
+    res=$(tools_lookup "$b")
+    if [[ -z "$res" ]]; then unknown+=("$b"); continue; fi
+    read -r pkg src <<<"$res"
+    case "$src" in aur) aur+=("$pkg") ;; *) pac+=("$pkg") ;; esac
+  done
+  ((${#unknown[@]})) && warn "inconnus (ignorés) : ${unknown[*]}"
+  ((${#pac[@]}+${#aur[@]})) || { err "rien à installer."; return 1; }
+
+  echo "À installer :"
+  ((${#pac[@]})) && printf '  officiel : sudo pacman -S --needed %s\n' "${pac[*]}"
+  ((${#aur[@]})) && printf '  AUR      : yay -S --needed %s\n' "${aur[*]}"
+
+  if [[ "$PENTEST_DRY_RUN" == "1" ]]; then
+    ((${#pac[@]})) && printf '%s[dry-run]%s sudo pacman -S --needed %s\n' "$_c_dim" "$_c_reset" "${pac[*]}"
+    ((${#aur[@]})) && printf '%s[dry-run]%s yay -S --needed %s\n' "$_c_dim" "$_c_reset" "${aur[*]}"
+    return 0
+  fi
+
+  # Confirmation (gum si dispo, sinon read).
+  if command -v gum >/dev/null 2>&1; then
+    gum confirm "Lancer l'installation ?" || { log "annulé."; return 0; }
+  else
+    read -r -p "Lancer l'installation ? [o/N] " a; [[ "$a" =~ ^[oOyY]$ ]] || { log "annulé."; return 0; }
+  fi
+
+  local rc=0
+  if ((${#pac[@]})); then
+    log "installation officielle…"; sudo pacman -S --needed "${pac[@]}" || rc=1
+  fi
+  if ((${#aur[@]})); then
+    if command -v yay >/dev/null 2>&1; then
+      log "installation AUR (yay)…"; yay -S --needed "${aur[@]}" || rc=1
+    else
+      warn "yay introuvable — paquets AUR non installés : ${aur[*]}"; rc=1
+    fi
+  fi
+  [[ $rc -eq 0 ]] && ok "installation terminée." || warn "installation terminée avec des erreurs."
+  return $rc
 }
 
 # Explique l'option conteneur (Distrobox + Podman rootless). N'installe RIEN.
@@ -49,19 +132,11 @@ Isolation des outils — options comparées
 
 Mise en place (à lancer TOI-MÊME, avec ton accord — rien n'est exécuté ici) :
 
-  # 1. Installer Podman (rootless) et Distrobox
   sudo pacman -S --needed podman distrobox
-
-  # 2. Créer une boîte dédiée au pentest (image BlackArch ou Kali au choix)
   distrobox create --name pentest --image docker.io/blackarchlinux/blackarch:latest
-  #   (alternative Kali : --image docker.io/kalilinux/kali-rolling:latest)
-
-  # 3. Entrer dedans et installer les outils voulus À L'INTÉRIEUR
   distrobox enter pentest
   #   puis, dans la boîte : sudo pacman -S nmap ffuf ...  (BlackArch)
-  #                         ou : sudo apt install nmap ffuf ...  (Kali)
 
-Le mode pentest n'installe ni ne lance aucun de ces outils : il prépare
-seulement l'environnement.
+Le mode pentest prépare l'environnement : il ne lance aucun outil offensif.
 EOF
 }
