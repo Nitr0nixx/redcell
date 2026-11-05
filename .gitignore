@@ -1,0 +1,12 @@
+# Données sensibles — ne JAMAIS committer
+*.conf.vpn
+*.ovpn
+*.key
+*.pem
+wg*.conf
+secrets/
+loot/
+# État runtime
+*.bak.*
+*.log
+.DS_Store
