@@ -15,7 +15,7 @@ lisible et documenté.
 |---|---|---|
 | 0 | Audit système + architecture | ✅ |
 | 1 | `on` / `off` / `status` : thème, notifications, restauration, tests | ✅ |
-| 2 | Workspaces Hyprland, tmux, Firefox isolé, indicateur de barre | ⏳ |
+| 2 | Workspaces Hyprland, tmux, Firefox isolé, indicateur de barre | ✅ |
 | 3 | Dossiers de lab, scope, notes, journal | ⏳ |
 | 4 | VPN, kill switch, `panic`, retour arrière | ⏳ |
 | 5 | Vérification des outils, raccourci, install/désinstall, doc | ⏳ |
@@ -41,6 +41,31 @@ pentest status            # mode, lab, thème, notifications (VPN/scope : phases
 
 Les commandes `scope` (phase 3) et `panic` (phase 4) sont reconnues mais pas
 encore actives.
+
+## Espaces de travail, tmux et navigateur (phase 2)
+
+À l'activation, le mode ouvre la **disposition** décrite dans un seul fichier,
+`~/.config/mode-pentest/layout.conf` (modèle : `config/layout.conf`) :
+
+```
+<workspace> | <app-id> | <commande>   # {LAB} = nom du lab
+```
+
+Par défaut :
+- **Workspace 1** : terminal `foot` (classe `pentest-term`) lançant une session
+  **tmux** `pentest-<lab>` (attach-or-create → elle persiste). Mets tes fenêtres
+  notes / scans / outils dans cette session tmux.
+- **Workspace 2** : **Firefox isolé** via `pentest-browser` (profil dédié sans
+  comptes perso, télémétrie/sync coupées, proxy local Burp/ZAP pré-réglé mais
+  **désactivé** par défaut — voir `bin/pentest-browser`).
+
+`pentest off` ferme **uniquement nos fenêtres** (repérées par leur app-id) ;
+tmux survit donc aucun travail n'est perdu. Désactivable via `close_layout`.
+
+**Indicateur de barre** : plugin Quickshell `theo.pentest` (une pastille rouge
+« PENTEST · \<lab\> » visible quand le mode est actif, tooltip avec lab/VPN/DND).
+`install.sh` l'ajoute à `shell.json` (section *right*, avant le tray) après
+sauvegarde ; `--no-bar` saute cette étape, `--uninstall` le retire.
 
 ## Fonctionnement
 

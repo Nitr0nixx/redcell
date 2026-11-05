@@ -10,3 +10,7 @@ loot/
 *.bak.*
 *.log
 .DS_Store
+
+# Profil navigateur isolé (jamais dans git)
+firefox/
+user.js

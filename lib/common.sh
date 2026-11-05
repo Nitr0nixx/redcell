@@ -43,6 +43,16 @@ run() {
   "$@"
 }
 
+# runq : comme run, mais en exécution réelle la sortie de la commande est
+# silencieuse (utile pour hyprctl qui affiche "ok"). En dry-run, on l'affiche.
+runq() {
+  if [[ "$PENTEST_DRY_RUN" == "1" ]]; then
+    printf '%s[dry-run]%s %s\n' "$_c_dim" "$_c_reset" "$*"
+    return 0
+  fi
+  "$@" >/dev/null 2>&1
+}
+
 # --- Lecture de config (TOML plat, clé = "valeur") ---------------------------
 # Lecteur minimal volontairement simple : suffisant pour un fichier plat.
 # Usage : cfg_get <clé> <valeur_par_défaut>
