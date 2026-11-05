@@ -79,6 +79,11 @@ install_mode() {
   mkdir -p "$CONFIG_DIR"
   copy_if_absent "$ROOT_DIR/config/mode-pentest.example.toml" "$CONFIG_DIR/config.toml"
   copy_if_absent "$ROOT_DIR/config/layout.conf"               "$CONFIG_DIR/layout.conf"
+  # Modèles de lab personnalisables (sinon ceux du projet sont utilisés).
+  mkdir -p "$CONFIG_DIR/templates"
+  for t in scope notes report; do
+    copy_if_absent "$ROOT_DIR/templates/$t.md" "$CONFIG_DIR/templates/$t.md"
+  done
 
   if [[ "$with_bar" == "1" ]]; then
     echo "Barre :"; wire_bar add

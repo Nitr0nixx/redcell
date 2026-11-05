@@ -16,7 +16,7 @@ lisible et documenté.
 | 0 | Audit système + architecture | ✅ |
 | 1 | `on` / `off` / `status` : thème, notifications, restauration, tests | ✅ |
 | 2 | Workspaces Hyprland, tmux, Firefox isolé, indicateur de barre | ✅ |
-| 3 | Dossiers de lab, scope, notes, journal | ⏳ |
+| 3 | Dossiers de lab, scope, notes, journal | ✅ |
 | 4 | VPN, kill switch, `panic`, retour arrière | ⏳ |
 | 5 | Vérification des outils, raccourci, install/désinstall, doc | ⏳ |
 
@@ -34,13 +34,37 @@ lisible et documenté.
 ## Commandes (phase 1)
 
 ```bash
-pentest on <nom-du-lab>   # ambiance pentest (thème rouge + DND) et marque le mode actif
-pentest off               # restaure le thème et les notifications d'avant
-pentest status            # mode, lab, thème, notifications (VPN/scope : phases suivantes)
+pentest on <nom-du-lab>     # ambiance + workspaces + dossier du lab ; mode actif
+pentest off                 # restaure l'état d'avant, ferme nos fenêtres
+pentest status              # mode, lab, thème, notifications, dossier, cible/scope
+pentest scope               # affiche le périmètre autorisé du lab actif
+pentest scope edit          # édite scope.md dans $EDITOR
+pentest scope add <cible>   # ajoute une cible autorisée (ex. 10.10.10.0/24)
+pentest log <texte>         # ajoute une note horodatée au journal du lab
 ```
 
-Les commandes `scope` (phase 3) et `panic` (phase 4) sont reconnues mais pas
-encore actives.
+La commande `panic` (phase 4) est reconnue mais pas encore active.
+
+## Dossiers de lab, scope et journal (phase 3)
+
+`pentest on <lab>` crée (idempotent) un dossier par lab sous `~/pentest/<lab>`
+en permissions restrictives (**700**), à partir de modèles Markdown :
+
+```
+~/pentest/<lab>/
+├── scope/scope.md      # périmètre AUTORISÉ (affiché à chaque activation)
+├── notes/notes.md      # prise de notes
+├── scans/  loot/  captures/
+├── report/report.md    # squelette de rapport
+├── journal.log         # sessions horodatées + notes (pentest log)
+└── history.bash        # historique shell propre au lab (via HISTFILE)
+```
+
+- Le **scope** est obligatoire dans l'esprit : il est rappelé à chaque `on`.
+  Édite-le (`pentest scope edit`) ou ajoute des cibles (`pentest scope add …`).
+- Le **journal** reçoit automatiquement les débuts/fins de session ; `pentest
+  log` y ajoute tes notes horodatées — pratique pour rédiger le rapport.
+- Modèles personnalisables dans `~/.config/mode-pentest/templates/`.
 
 ## Espaces de travail, tmux et navigateur (phase 2)
 
