@@ -17,7 +17,7 @@ lisible et documenté.
 | 1 | `on` / `off` / `status` : thème, notifications, restauration, tests | ✅ |
 | 2 | Workspaces Hyprland, tmux, Firefox isolé, indicateur de barre | ✅ |
 | 3 | Dossiers de lab, scope, notes, journal | ✅ |
-| 4 | VPN, kill switch, `panic`, retour arrière | ⏳ |
+| 4 | VPN, kill switch, `panic`, retour arrière | ✅ |
 | 5 | Vérification des outils, raccourci, install/désinstall, doc | ⏳ |
 
 ## Installation
@@ -41,9 +41,28 @@ pentest scope               # affiche le périmètre autorisé du lab actif
 pentest scope edit          # édite scope.md dans $EDITOR
 pentest scope add <cible>   # ajoute une cible autorisée (ex. 10.10.10.0/24)
 pentest log <texte>         # ajoute une note horodatée au journal du lab
+pentest vpn up|down|status  # tunnel VPN (OpenVPN) du lab actif
+pentest panic               # coupe VPN + kill switch, réseau normal immédiat
 ```
 
-La commande `panic` (phase 4) est reconnue mais pas encore active.
+## VPN, kill switch et panic (phase 4)
+
+- **VPN (OpenVPN)** : place un `.ovpn` dans `~/pentest/<lab>/vpn.ovpn` (ou
+  renseigne `vpn_config`). `pentest vpn up` lance OpenVPN en arrière-plan ;
+  `vpn_auto = on` le connecte dès `pentest on`. L'IP du tunnel apparaît dans
+  `status` et dans l'indicateur de barre.
+- **Kill switch** (`killswitch = on`) : une table nftables **dédiée**
+  `inet mode_pentest`, politique **drop**, n'autorise en sortie que `lo`, le
+  tunnel `tun*`, les connexions établies et l'IP:port du serveur VPN → **aucune
+  fuite** du trafic de lab hors du tunnel. Elle ne touche **jamais** tes autres
+  règles ni UFW ; la couper = supprimer cette seule table.
+- **`pentest panic`** : coupe VPN + kill switch et restaure le réseau normal
+  **immédiatement**. Fonctionne sans lab actif et même après un plantage
+  (il supprime la table si elle existe, sans jamais te priver de réseau).
+- `pentest off` fait toujours `net_normal` (kill switch retiré + VPN coupé).
+
+> Prérequis : `sudo pacman -S --needed openvpn`. OpenVPN et nftables nécessitent
+> `sudo`. Rien n'est lancé en privilégié sans ton action.
 
 ## Dossiers de lab, scope et journal (phase 3)
 
