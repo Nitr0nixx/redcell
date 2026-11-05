@@ -40,6 +40,11 @@ pentest status              # mode, lab, thème, notifications, dossier, cible/s
 pentest scope               # affiche le périmètre autorisé du lab actif
 pentest scope edit          # édite scope.md dans $EDITOR
 pentest scope add <cible>   # ajoute une cible autorisée (ex. 10.10.10.0/24)
+pentest target <ip> [nom]   # machine cible : scope + /etc/hosts + barre/status
+pentest ip                  # ton IP de tunnel VPN (LHOST), copiée au presse-papier
+pentest flag <valeur> [lbl] # consigne un flag trouvé (flags.md + journal)
+pentest room <nom> [url]    # renseigne la room (repris dans le writeup)
+pentest report              # génère report/writeup.md (portfolio)
 pentest log <texte>         # ajoute une note horodatée au journal du lab
 pentest vpn connect         # assistant : choisit un .ovpn, monte le tunnel
 pentest vpn up|down|status  # tunnel VPN (OpenVPN) du lab actif
@@ -116,6 +121,31 @@ Listes éditables : `~/.config/mode-pentest/menu-apps.list` (outils cyber à
 révéler en mode) et `menu-keep.list` (socle gardé pendant le focus — retires-en
 Firefox si tu veux n'avoir que le navigateur isolé). Désactivable en bloc avec
 `menu_integration = off`, ou focus seul avec `menu_focus = off`.
+
+## Machine cible, flags & writeup (par room)
+
+Confort pour enchaîner les rooms et garder une trace exploitable :
+
+```bash
+pentest target 10.10.123.45 blue   # enregistre la cible du lab actif
+pentest ip                          # ton IP de tunnel (LHOST) -> presse-papier
+pentest flag 'THM{...}' root        # consigne un flag (user/root/libellé libre)
+pentest room "Blue" https://tryhackme.com/room/blue
+pentest report                      # compile tout en report/writeup.md
+```
+
+- **`target`** mémorise l'IP (et un nom) de la box : ajoutée au scope, affichée
+  dans `status` et dans la **barre** (« PENTEST · lab → ip »), et — si tu donnes
+  un nom et que `manage_hosts = on` — ajoutée à **`/etc/hosts`** comme
+  `ip  nom.thm` (bloc dédié, avec confirmation, **retiré à `pentest off`**).
+  `pentest target` seul affiche la cible ; `pentest target clear` l'efface.
+- **`ip`** affiche ton adresse `tun*` et la **copie dans le presse-papier**
+  (pratique pour `LHOST` / reverse shells).
+- **`flag`** horodate chaque flag dans `flags.md` + le journal.
+- **`room`** renseigne nom + URL de la room (métadonnées du lab).
+- **`report`** génère `report/writeup.md` (contexte, scope, flags, notes,
+  journal) — **régénéré** à chaque appel ; ton `report/report.md` écrit à la
+  main n'est pas touché.
 
 ## TryHackMe & connexion aux machines cibles
 
@@ -258,6 +288,7 @@ sauvegarde ; `--no-bar` saute cette étape, `--uninstall` le retire.
 | `browser_home` | page d'accueil du navigateur isolé | `https://tryhackme.com` |
 | `vpn_dir` | dossier supplémentaire où chercher les `.ovpn` | `~/Downloads` |
 | `vpn_picker_on_start` | `on` = ouvre l'assistant VPN à l'activation | `on` |
+| `manage_hosts` | `on` = `pentest target <ip> <nom>` gère une entrée `/etc/hosts` | `on` |
 
 ## Développement / tests
 
