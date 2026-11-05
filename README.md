@@ -18,7 +18,7 @@ lisible et documenté.
 | 2 | Workspaces Hyprland, tmux, Firefox isolé, indicateur de barre | ✅ |
 | 3 | Dossiers de lab, scope, notes, journal | ✅ |
 | 4 | VPN, kill switch, `panic`, retour arrière | ✅ |
-| 5 | Vérification des outils, raccourci, install/désinstall, doc | ⏳ |
+| 5 | Vérification des outils, raccourci, install/désinstall, doc | ✅ |
 
 ## Installation
 
@@ -42,8 +42,50 @@ pentest scope edit          # édite scope.md dans $EDITOR
 pentest scope add <cible>   # ajoute une cible autorisée (ex. 10.10.10.0/24)
 pentest log <texte>         # ajoute une note horodatée au journal du lab
 pentest vpn up|down|status  # tunnel VPN (OpenVPN) du lab actif
+pentest killswitch on|off   # kill switch nftables, indépendant du VPN
 pentest panic               # coupe VPN + kill switch, réseau normal immédiat
+pentest tools [containers]  # outils présents/absents ; option conteneur
 ```
+
+**Raccourci** : `SUPER + SHIFT + ALT + P` bascule le mode (`pentest-toggle`) —
+si actif, il le coupe ; sinon il ouvre un petit terminal qui demande le nom du
+lab (avec les labs existants en suggestion). Posé/retiré par `install.sh`.
+
+## Vérification des outils (phase 5)
+
+`pentest tools` parcourt une liste **configurable**
+(`~/.config/mode-pentest/tools.list`) et indique chaque outil **présent (✓)** ou
+**absent (—)**, sans **jamais rien installer**. `pentest tools containers`
+explique l'option d'isolation recommandée et donne les commandes à lancer
+toi-même :
+
+- **Distrobox + Podman rootless** (recommandé) : les outils lourds vivent dans un
+  conteneur jetable (image BlackArch ou Kali), l'hôte reste propre, pas de root
+  pour l'outillage. Alternatives : paquets Arch (simple mais pollue l'hôte) ou
+  dépôt BlackArch (complet mais gros dépôt tiers sur l'hôte).
+
+## Limites connues
+
+- **VPN non testé bout-en-bout** faute de `.ovpn` réel ; le reste du réseau
+  (kill switch monté/retiré, `panic`) est validé en conditions réelles.
+- Le **kill switch** a une politique *drop* : tant qu'il est actif sans tunnel,
+  seules les connexions établies et le loopback passent (c'est voulu). `off` /
+  `panic` le retirent toujours.
+- Re-lancer `pentest on` quand le mode est déjà actif **ré-ouvre** la
+  disposition (fenêtres en double possibles) ; préfère `off` puis `on`.
+- Spécifique à **Omarchy/Hyprland en Lua** et au terminal **foot** : adapter
+  `layout.conf` pour un autre terminal.
+- Les outils de pentest eux-mêmes ne sont **pas** fournis ni lancés : ce mode
+  prépare l'environnement, rien d'offensif.
+
+## Désinstallation
+
+```bash
+./install.sh --uninstall   # retire liens, widget de barre et raccourci
+```
+
+La config (`~/.config/mode-pentest/`) et les dossiers de lab (`~/pentest/`) sont
+conservés ; supprime-les à la main si tu le souhaites.
 
 ## VPN, kill switch et panic (phase 4)
 

@@ -19,6 +19,8 @@ PLUGIN_TARGET="$XDG_CONFIG_HOME/omarchy/plugins/theo.pentest"
 CONFIG_DIR="$XDG_CONFIG_HOME/mode-pentest"
 SHELL_JSON="$XDG_CONFIG_HOME/omarchy/shell.json"
 WIDGET_ID="theo.pentest"
+BINDINGS="$XDG_CONFIG_HOME/hypr/bindings.lua"
+BIND_KEY="SUPER + SHIFT + ALT + P"
 
 link() { # link <src> <dst>
   local src="$1" dst="$2"
@@ -68,22 +70,48 @@ with open(path, "w") as f: json.dump(data, f, indent=2); f.write("\n")
 PY
 }
 
+# Ajoute/retire le raccourci clavier dans bindings.lua (bloc balisé + sauvegarde).
+wire_binding() { # wire_binding <add|remove>
+  local action="$1"
+  [[ -f "$BINDINGS" ]] || { echo "  ⚠ $BINDINGS absent — raccourci non géré."; return 0; }
+  local begin="-- >>> mode-pentest >>>" end="-- <<< mode-pentest <<<"
+  if grep -qF -- "$begin" "$BINDINGS"; then
+    sed -i "/$begin/,/$end/d" "$BINDINGS"   # retire un bloc existant (idempotent)
+  fi
+  if [[ "$action" == "add" ]]; then
+    cp "$BINDINGS" "$BINDINGS.bak.$(date +%s)"
+    {
+      echo "$begin  (géré par mode-pentest/install.sh)"
+      echo "o.bind(\"$BIND_KEY\", \"Pentest mode toggle\", \"pentest-toggle\")"
+      echo "$end"
+    } >> "$BINDINGS"
+    echo "  + raccourci $BIND_KEY -> pentest-toggle"
+  else
+    echo "  - raccourci retiré"
+  fi
+  command -v hyprctl >/dev/null 2>&1 && hyprctl reload >/dev/null 2>&1 || true
+}
+
 install_mode() {
   local with_bar="$1"
   echo "Installation du mode pentest…"
   link "$ROOT_DIR/bin/pentest"         "$BIN_DIR/pentest"
   link "$ROOT_DIR/bin/pentest-browser" "$BIN_DIR/pentest-browser"
+  link "$ROOT_DIR/bin/pentest-toggle"  "$BIN_DIR/pentest-toggle"
   link "$ROOT_DIR/themes/pentest"      "$THEME_TARGET"
   link "$ROOT_DIR/shell-plugin/theo.pentest" "$PLUGIN_TARGET"
 
   mkdir -p "$CONFIG_DIR"
   copy_if_absent "$ROOT_DIR/config/mode-pentest.example.toml" "$CONFIG_DIR/config.toml"
   copy_if_absent "$ROOT_DIR/config/layout.conf"               "$CONFIG_DIR/layout.conf"
+  copy_if_absent "$ROOT_DIR/config/tools.list"                "$CONFIG_DIR/tools.list"
   # Modèles de lab personnalisables (sinon ceux du projet sont utilisés).
   mkdir -p "$CONFIG_DIR/templates"
   for t in scope notes report; do
     copy_if_absent "$ROOT_DIR/templates/$t.md" "$CONFIG_DIR/templates/$t.md"
   done
+
+  echo "Raccourci :"; wire_binding add
 
   if [[ "$with_bar" == "1" ]]; then
     echo "Barre :"; wire_bar add
@@ -97,8 +125,9 @@ install_mode() {
 
 uninstall_mode() {
   echo "Désinstallation du mode pentest…"
+  echo "Raccourci :"; wire_binding remove
   echo "Barre :"; wire_bar remove
-  for l in "$BIN_DIR/pentest" "$BIN_DIR/pentest-browser" "$THEME_TARGET" "$PLUGIN_TARGET"; do
+  for l in "$BIN_DIR/pentest" "$BIN_DIR/pentest-browser" "$BIN_DIR/pentest-toggle" "$THEME_TARGET" "$PLUGIN_TARGET"; do
     [[ -L "$l" ]] && { rm -f "$l"; echo "  - $l"; }
   done
   command -v omarchy-shell >/dev/null 2>&1 && omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true

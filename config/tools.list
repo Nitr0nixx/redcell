@@ -1,0 +1,45 @@
+# Liste des outils vérifiés par « pentest tools ».
+# - Une ligne par outil : le nom de la COMMANDE (ce qui est cherché dans le PATH).
+# - Les lignes « #: Titre » sont des en-têtes de catégorie affichés.
+# - Les autres lignes « # ... » sont des commentaires ignorés.
+# Édite librement : AUCUN outil n'est installé automatiquement.
+
+#: Reconnaissance réseau
+nmap
+masscan
+tcpdump
+dnsrecon
+
+#: Web
+ffuf
+gobuster
+feroxbuster
+nikto
+whatweb
+sqlmap
+wfuzz
+
+#: SMB / AD / services
+smbclient
+enum4linux
+responder
+netexec
+
+#: Mots de passe
+hydra
+john
+hashcat
+
+#: Proxy / trafic
+proxychains4
+socat
+ncat
+
+#: Navigateur & proxy d'interception
+firefox
+burpsuite
+zaproxy
+
+#: Isolation par conteneur (optionnel, voir « pentest tools containers »)
+podman
+distrobox
