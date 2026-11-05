@@ -105,6 +105,8 @@ install_mode() {
   copy_if_absent "$ROOT_DIR/config/mode-pentest.example.toml" "$CONFIG_DIR/config.toml"
   copy_if_absent "$ROOT_DIR/config/layout.conf"               "$CONFIG_DIR/layout.conf"
   copy_if_absent "$ROOT_DIR/config/tools.list"                "$CONFIG_DIR/tools.list"
+  copy_if_absent "$ROOT_DIR/config/menu-apps.list"            "$CONFIG_DIR/menu-apps.list"
+  copy_if_absent "$ROOT_DIR/config/menu-keep.list"            "$CONFIG_DIR/menu-keep.list"
   # Modèles de lab personnalisables (sinon ceux du projet sont utilisés).
   mkdir -p "$CONFIG_DIR/templates"
   for t in scope notes report; do
@@ -118,6 +120,12 @@ install_mode() {
     command -v omarchy-shell >/dev/null 2>&1 && omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
   fi
 
+  # Menu : établit l'état de base (apps cyber masquées hors mode ; si le mode
+  # est déjà actif, on révèle/focalise à la place). Rien si menu_integration=off.
+  echo "Menu :"; "$BIN_DIR/pentest" menu reconcile >/dev/null 2>&1 \
+    && echo "  = lanceur d'applications adapté au mode" \
+    || echo "  = (menu non modifié)"
+
   echo
   echo "Terminé.  pentest status"
   case ":$PATH:" in *":$BIN_DIR:"*) : ;; *) echo "  ⚠ $BIN_DIR n'est pas dans ton PATH." ;; esac
@@ -125,6 +133,10 @@ install_mode() {
 
 uninstall_mode() {
   echo "Désinstallation du mode pentest…"
+  # Menu : retire TOUTES nos interventions (ombres + éditions en place) AVANT de
+  # retirer le lien 'pentest', pour rendre le lanceur à son état d'origine.
+  echo "Menu :"; [[ -x "$BIN_DIR/pentest" ]] && { "$BIN_DIR/pentest" menu reveal-all >/dev/null 2>&1 \
+    && echo "  - interventions sur le menu annulées" || echo "  = (rien à annuler)"; }
   echo "Raccourci :"; wire_binding remove
   echo "Barre :"; wire_bar remove
   for l in "$BIN_DIR/pentest" "$BIN_DIR/pentest-browser" "$BIN_DIR/pentest-toggle" "$THEME_TARGET" "$PLUGIN_TARGET"; do

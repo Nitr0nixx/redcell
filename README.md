@@ -46,6 +46,7 @@ pentest killswitch on|off   # kill switch nftables, indépendant du VPN
 pentest panic               # coupe VPN + kill switch, réseau normal immédiat
 pentest tools [containers]  # outils présents/absents ; option conteneur
 pentest install [outils…]   # interface d'installation (menu TUI, confirmation)
+pentest menu [status]       # adapte le lanceur d'apps au mode (voir plus bas)
 ```
 
 **Raccourci** : `SUPER + SHIFT + ALT + P` bascule le mode (`pentest-toggle`) —
@@ -76,6 +77,44 @@ noms vérifiés, définis dans `tools.list`. Rien n'est installé sans confirmat
 pentest install           # menu des outils manquants
 pentest install nmap ffuf # installe directement (nmap=officiel, ffuf=AUR)
 ```
+
+## Lanceur d'applications adapté au mode
+
+Le menu d'applications (walker, `SUPER + SPACE`) **reflète le mode** :
+
+- **Hors mode (normal)** : les outils cyber (Burp, ZAP, Wireshark… — liste
+  `menu-apps.list`) sont **masqués** du menu pour le garder propre.
+- **En mode pentest** : ces outils **réapparaissent**, nos lanceurs
+  `Pentest: …` (terminal du lab, navigateur isolé, scope, quitter) sont ajoutés,
+  et — si `menu_focus = on` — **toutes les autres apps du quotidien** (jeux,
+  chat, musique, webapps…) sont **masquées** pour un lanceur focalisé. Seul un
+  **socle** reste visible : terminal, gestionnaire de fichiers, **Firefox**,
+  réglages, éditeur, apps omarchy… (liste blanche `menu-keep.list`).
+
+À `pentest off`, **tout est rétabli** à l'identique.
+
+Mécanisme 100 % standard freedesktop, entièrement réversible :
+
+- une app installée dans un répertoire système est masquée par une petite copie
+  locale « ombre » (`NoDisplay=true`) qui l'occulte — révélée en retirant l'ombre ;
+- une entrée **déjà locale** (propre à toi) est éditée **en place après
+  sauvegarde** (`~/.local/state/mode-pentest/menu-backups/`), puis restaurée.
+
+On ne modifie **jamais** un fichier sans l'avoir sauvegardé, et chaque
+intervention porte un marqueur `X-ModePentest=` pour un retour arrière fiable
+même après un plantage. Une entrée perso homonyme d'un outil cyber n'est
+**jamais** écrasée.
+
+```bash
+pentest menu            # état : apps masquées/visibles, lanceurs liés
+pentest menu show|hide  # force l'état pentest / normal (debug)
+pentest menu reveal-all # annule toutes nos interventions (fait au --uninstall)
+```
+
+Listes éditables : `~/.config/mode-pentest/menu-apps.list` (outils cyber à
+révéler en mode) et `menu-keep.list` (socle gardé pendant le focus — retires-en
+Firefox si tu veux n'avoir que le navigateur isolé). Désactivable en bloc avec
+`menu_integration = off`, ou focus seul avec `menu_focus = off`.
 
 ## Limites connues
 
@@ -185,6 +224,8 @@ sauvegarde ; `--no-bar` saute cette étape, `--uninstall` le retire.
 | `theme` | thème appliqué en mode pentest | `pentest` |
 | `restore_theme` | thème de secours si l'état est perdu | `neon-city` |
 | `dnd` | `on` = silence les notifications | `on` |
+| `menu_integration` | `on` = outils cyber visibles seulement en mode + lanceurs | `on` |
+| `menu_focus` | `on` = masque aussi les apps hors liste blanche pendant le mode | `on` |
 
 ## Développement / tests
 

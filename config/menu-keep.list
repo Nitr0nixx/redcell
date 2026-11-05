@@ -1,0 +1,65 @@
+# Socle d'applications à GARDER visibles pendant le mode pentest (menu_focus).
+#
+# Pendant le mode, tout ce qui n'est PAS ici (ni un outil cyber, ni un lanceur
+# pentest) est masqué du lanceur, puis rétabli à « pentest off ».
+#
+# Un id de .desktop par ligne (sans « .desktop »). Les motifs glob sont permis
+# (ex. « omarchy-* », « *ghostty* »). « # » = commentaire. Les apps cyber
+# (menu-apps.list) et nos « pentest-* » restent toujours visibles automatiquement.
+#
+# Généreux par défaut : on préfère garder l'essentiel que masquer trop. Ajuste
+# à ton goût (retire Firefox d'ici si tu veux n'avoir que le navigateur isolé).
+
+# --- Terminaux ---
+foot
+Alacritty
+alacritty
+kitty
+org.wezfurlong.wezterm
+com.mitchellh.ghostty
+ghostty
+Console
+org.gnome.Console
+
+# --- Gestionnaires de fichiers ---
+org.gnome.Nautilus
+nautilus
+thunar
+org.kde.dolphin
+pcmanfm-qt
+nemo
+
+# --- Navigateurs (Firefox gardé volontairement) ---
+firefox
+firefox-esr
+org.mozilla.firefox
+chromium
+brave-browser
+com.brave.Browser
+google-chrome
+
+# --- Éditeurs / dev ---
+code
+code-oss
+nvim
+org.gnome.TextEditor
+gvim
+
+# --- Réglages & système ---
+org.gnome.Settings
+org.gnome.Calculator
+omacalc
+pavucontrol
+org.pulseaudio.pavucontrol
+blueman-manager
+nm-connection-editor
+org.gnome.DiskUtility
+gnome-disks
+org.gnome.SystemMonitor
+btop
+missioncenter
+io.missioncenter.MissionCenter
+
+# --- Omarchy (menus, apps maison, webapp handlers…) ---
+omarchy-*
+Omarchy*

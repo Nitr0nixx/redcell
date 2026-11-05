@@ -117,6 +117,12 @@ tools_install() {
     fi
   fi
   [[ $rc -eq 0 ]] && ok "installation terminée." || warn "installation terminée avec des erreurs."
+
+  # Réconcilie le lanceur : une app cyber GUI fraîchement installée doit suivre
+  # le mode (masquée hors pentest, visible pendant). Best-effort.
+  if declare -F menu_reconcile >/dev/null 2>&1; then
+    menu_reconcile || true
+  fi
   return $rc
 }
 

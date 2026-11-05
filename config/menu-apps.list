@@ -1,0 +1,31 @@
+# Apps GUI de cyber à n'afficher dans le lanceur QUE pendant le mode pentest.
+#
+# Un identifiant de fichier .desktop par ligne (sans « .desktop »), tel qu'il
+# apparaît dans /usr/share/applications. « # » = commentaire.
+#
+# Comment ça marche : hors mode, une copie locale « ombre » avec NoDisplay=true
+# masque l'entrée ; en mode pentest, l'ombre est retirée et l'app réapparaît.
+# Seules les apps RÉELLEMENT installées sont concernées ; les autres lignes sont
+# ignorées sans bruit. Une entrée perso portant le même nom n'est jamais touchée.
+#
+# Pour connaître l'id exact d'une app installée :
+#   grep -rl '^Name=.*Burp' /usr/share/applications
+# puis ajoute le nom de fichier (sans .desktop) ici.
+
+# Proxies d'interception
+burpsuite
+zaproxy
+org.zaproxy.ZAP
+owasp-zap
+
+# Analyse réseau
+wireshark
+org.wireshark.Wireshark
+ettercap
+
+# Divers GUI
+zenmap
+ghidra
+org.ghidra_sre.Ghidra
+cutter
+re.rizin.cutter
