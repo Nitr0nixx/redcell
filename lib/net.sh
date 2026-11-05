@@ -105,8 +105,9 @@ killswitch_down() {
 killswitch_active() { [[ -f "$KILLSWITCH_FLAG" ]]; }
 
 # --- VPN (OpenVPN) -----------------------------------------------------------
-vpn_up() { # <lab>
-  local lab="$1" cfg; cfg=$(vpn_config_path "$lab")
+vpn_up() { # <lab> [config.ovpn]
+  local lab="$1" cfg="${2:-}"
+  [[ -n "$cfg" ]] || cfg=$(vpn_config_path "$lab")
   if ! command -v openvpn >/dev/null 2>&1; then
     warn "openvpn non installé (sudo pacman -S --needed openvpn) — VPN ignoré."; return 1
   fi
@@ -130,6 +131,108 @@ vpn_up() { # <lab>
     --writepid "$VPN_PID_FILE"
   printf 'server=%s %s/%s\n' "$ip" "$proto" "$port" > "$VPN_META_FILE"
   ok "VPN lancé (OpenVPN en arrière-plan). Vérifie 'pentest vpn status'."
+}
+
+# Liste les .ovpn candidats (un par ligne) : config explicite, dossier du lab,
+# puis dossier de téléchargement (clé vpn_dir, défaut ~/Downloads). Dédupliqué.
+vpn_find_configs() { # <lab>
+  local lab="$1" seen=" " c d f
+  c=$(cfg_get "vpn_config" ""); c="${c/#\~/$HOME}"
+  [[ -n "$c" && -f "$c" ]] && { printf '%s\n' "$c"; seen+=" $c "; }
+  for f in "$(lab_dir "$lab")"/*.ovpn; do
+    [[ -f "$f" ]] || continue
+    case "$seen" in *" $f "*) ;; *) printf '%s\n' "$f"; seen+=" $f ";; esac
+  done
+  d=$(cfg_get "vpn_dir" "$HOME/Downloads"); d="${d/#\~/$HOME}"
+  for f in "$d"/*.ovpn; do
+    [[ -f "$f" ]] || continue
+    case "$seen" in *" $f "*) ;; *) printf '%s\n' "$f"; seen+=" $f ";; esac
+  done
+  return 0
+}
+
+# Attend l'apparition de l'interface tun (jusqu'à ~<n> secondes). Vrai si montée.
+vpn_wait_tun() { # [secondes]
+  local n="${1:-12}" i
+  for ((i=0; i<n; i++)); do [[ -n "$(vpn_tun_ip)" ]] && return 0; sleep 1; done
+  [[ -n "$(vpn_tun_ip)" ]]
+}
+
+# Assistant de connexion VPN (interface simple). Choisit un .ovpn, monte le
+# tunnel, affiche l'IP, et propose d'enregistrer la cible dans le scope.
+# Ne lance AUCUN scan : au plus un ping de connectivité, et seulement si tu le
+# demandes explicitement.
+vpn_connect() { # <lab>
+  local lab="$1"
+  command -v openvpn >/dev/null 2>&1 || {
+    err "openvpn non installé. Installe-le : pentest install openvpn (ou sudo pacman -S --needed openvpn)"; return 1; }
+
+  local thm; thm=$(cfg_get "thm_access_url" "https://tryhackme.com/r/access")
+  mapfile -t cfgs < <(vpn_find_configs "$lab")
+
+  # Aucun .ovpn : on explique où le récupérer (TryHackMe → Access).
+  if [[ ${#cfgs[@]} -eq 0 ]]; then
+    warn "aucun fichier .ovpn trouvé."
+    cat <<EOF
+Pour te connecter aux machines cibles (ex. TryHackMe) :
+  1. Ouvre $thm dans le navigateur isolé (déjà sur TryHackMe).
+  2. Télécharge TON fichier de configuration OpenVPN (.ovpn).
+  3. Place-le dans :  $(lab_dir "$lab")/vpn.ovpn
+     (ou laisse-le dans ~/Downloads : il sera détecté automatiquement.)
+  4. Relance : pentest vpn connect
+EOF
+    if [[ "$PENTEST_DRY_RUN" != "1" ]] && command -v gum >/dev/null 2>&1; then
+      gum confirm "Ouvrir la page d'accès TryHackMe dans le navigateur isolé ?" \
+        && run setsid --fork pentest-browser "$lab" "$thm"
+    fi
+    return 1
+  fi
+
+  # Sélection du .ovpn.
+  local chosen=""
+  if [[ ${#cfgs[@]} -eq 1 ]]; then
+    chosen="${cfgs[0]}"
+    log "configuration VPN : $chosen"
+  elif command -v gum >/dev/null 2>&1 && [[ "$PENTEST_DRY_RUN" != "1" ]]; then
+    chosen=$(printf '%s\n' "${cfgs[@]}" | gum choose --header "Choisis ta configuration VPN (.ovpn)")
+    [[ -n "$chosen" ]] || { log "aucune configuration choisie."; return 0; }
+  else
+    chosen="${cfgs[0]}"
+    warn "plusieurs .ovpn trouvés ; j'utilise le premier : $chosen"
+    printf '%s\n' "${cfgs[@]/#/  - }"
+  fi
+
+  # Monte le tunnel (avec cette config précise).
+  vpn_up "$lab" "$chosen" || return 1
+  [[ -n "$(active_lab)" ]] && lab_journal "$lab" "VPN connect: $(basename "$chosen")" || true
+
+  if [[ "$PENTEST_DRY_RUN" == "1" ]]; then
+    printf '%s[dry-run]%s attendrait l interface tun puis afficherait l IP.\n' "$_c_dim" "$_c_reset"
+    return 0
+  fi
+
+  # Attend le tunnel et affiche l'IP.
+  if vpn_wait_tun 12; then
+    ok "connecté — IP du tunnel : $(vpn_tun_ip)"
+  else
+    warn "le tunnel n'est pas encore monté. Vérifie 'pentest vpn status' / tes identifiants."
+    return 1
+  fi
+
+  # (Optionnel) enregistrer la cible et tester la connectivité — jamais de scan.
+  command -v gum >/dev/null 2>&1 || return 0
+  if gum confirm "Enregistrer une machine cible dans le scope ?"; then
+    local target; target=$(gum input --placeholder "IP de la cible (ex. 10.10.123.45)")
+    if [[ -n "$target" ]]; then
+      lab_scope_add "$lab" "$target"; lab_journal "$lab" "SCOPE add (cible): $target"
+      ok "cible ajoutée au scope : $target"
+      if gum confirm "Tester la connectivité (un seul ping) ?"; then
+        ping -c1 -W2 "$target" >/dev/null 2>&1 \
+          && ok "cible joignable ($target)." \
+          || warn "pas de réponse ICMP (normal si la cible bloque le ping)."
+      fi
+    fi
+  fi
 }
 
 # Coupe le VPN. Idempotent, best-effort.

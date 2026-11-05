@@ -4,6 +4,7 @@
 # Dépend de lib/common.sh.
 
 PENTEST_LAB_ROOT=$(cfg_get "lab_root" "$HOME/pentest")
+PENTEST_LAB_ROOT="${PENTEST_LAB_ROOT/#\~/$HOME}"   # développe un ~ en tête
 
 lab_dir() { printf '%s/%s' "$PENTEST_LAB_ROOT" "$1"; }
 

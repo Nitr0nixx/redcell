@@ -41,6 +41,7 @@ pentest scope               # affiche le périmètre autorisé du lab actif
 pentest scope edit          # édite scope.md dans $EDITOR
 pentest scope add <cible>   # ajoute une cible autorisée (ex. 10.10.10.0/24)
 pentest log <texte>         # ajoute une note horodatée au journal du lab
+pentest vpn connect         # assistant : choisit un .ovpn, monte le tunnel
 pentest vpn up|down|status  # tunnel VPN (OpenVPN) du lab actif
 pentest killswitch on|off   # kill switch nftables, indépendant du VPN
 pentest panic               # coupe VPN + kill switch, réseau normal immédiat
@@ -115,6 +116,34 @@ Listes éditables : `~/.config/mode-pentest/menu-apps.list` (outils cyber à
 révéler en mode) et `menu-keep.list` (socle gardé pendant le focus — retires-en
 Firefox si tu veux n'avoir que le navigateur isolé). Désactivable en bloc avec
 `menu_integration = off`, ou focus seul avec `menu_focus = off`.
+
+## TryHackMe & connexion aux machines cibles
+
+En mode pentest, le **navigateur isolé s'ouvre sur TryHackMe** (plateforme de
+labs autorisés ; URL configurable via `browser_home`), et une **interface de
+connexion VPN** s'ouvre pour atteindre facilement les machines cibles.
+
+```bash
+pentest vpn connect     # assistant guidé (aussi : lanceur « Pentest: Connexion VPN »)
+```
+
+L'assistant :
+
+1. cherche un fichier `.ovpn` (clé `vpn_config`, dossier du lab, puis `vpn_dir`
+   = `~/Downloads` par défaut — pratique pour la config téléchargée sur THM) ;
+2. s'il n'en trouve pas, explique où le récupérer (page *Access* de TryHackMe)
+   et propose d'ouvrir cette page dans le navigateur isolé ;
+3. monte le tunnel OpenVPN avec la config choisie et **affiche l'IP du tunnel** ;
+4. propose d'**enregistrer la machine cible dans le scope** et, si tu le demandes,
+   un simple test de connectivité (**un seul ping** — aucun scan).
+
+Mise en place THM : connecte-toi sur TryHackMe → *Access* → télécharge ton
+`.ovpn` → il est détecté depuis `~/Downloads` (ou dépose-le dans
+`~/pentest/<lab>/vpn.ovpn`). À l'activation du mode, l'assistant s'ouvre tout
+seul si tu n'es pas déjà connecté (désactivable avec `vpn_picker_on_start`).
+
+> Rappel scope : ne te connecte et ne teste que des machines que tu es
+> **autorisé** à tester (une room TryHackMe active, un lab à toi…).
 
 ## Limites connues
 
@@ -226,6 +255,9 @@ sauvegarde ; `--no-bar` saute cette étape, `--uninstall` le retire.
 | `dnd` | `on` = silence les notifications | `on` |
 | `menu_integration` | `on` = outils cyber visibles seulement en mode + lanceurs | `on` |
 | `menu_focus` | `on` = masque aussi les apps hors liste blanche pendant le mode | `on` |
+| `browser_home` | page d'accueil du navigateur isolé | `https://tryhackme.com` |
+| `vpn_dir` | dossier supplémentaire où chercher les `.ovpn` | `~/Downloads` |
+| `vpn_picker_on_start` | `on` = ouvre l'assistant VPN à l'activation | `on` |
 
 ## Développement / tests
 
