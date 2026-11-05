@@ -22,9 +22,9 @@ check "INACTIVE au repos"        bash -c '[ "$('"$(printf %q "$PENTEST")"' bar)"
 
 echo "[2] ouverture de la disposition (dry-run)"
 out=$("$PENTEST" on demo 2>&1)
-check "exec workspace 1 (terminal)"  bash -c 'printf "%s" "'"$out"'" | grep -q "workspace 1 silent.*foot --app-id pentest-term"'
-check "exec workspace 2 (navigateur)" bash -c 'printf "%s" "'"$out"'" | grep -q "workspace 2 silent.*pentest-browser"'
-check "{LAB} substitué (tmux pentest-demo)" bash -c 'printf "%s" "'"$out"'" | grep -q "pentest-demo"'
+check "exec workspace 1 (terminal)"  grep -q "workspace 1 silent.*foot --app-id pentest-term" <<<"$out"
+check "exec workspace 2 (navigateur)" grep -q "workspace 2 silent.*pentest-browser" <<<"$out"
+check "{LAB} substitué (tmux pentest-demo)" grep -q "pentest-demo" <<<"$out"
 check "app-ids enregistrés"          test -f "$APPIDS"
 check "app-id terminal noté"         grep -q "^pentest-term$" "$APPIDS"
 check "app-id navigateur noté"       grep -q "^pentest-browser$" "$APPIDS"
@@ -36,9 +36,9 @@ check "contient le lab demo"         bash -c 'printf "%s" "'"$line"'" | grep -q 
 
 echo "[4] fermeture ciblée (dry-run)"
 off=$("$PENTEST" off 2>&1)
-check "closewindow class:pentest-term"    bash -c 'printf "%s" "'"$off"'" | grep -q "closewindow class:pentest-term"'
-check "closewindow class:pentest-browser" bash -c 'printf "%s" "'"$off"'" | grep -q "closewindow class:pentest-browser"'
-check "app-ids nettoyés après off"        bash -c '! test -f "'"$APPIDS"'"'
+check "close class:pentest-term"    grep -q 'window.close({ window = "class:pentest-term" })' <<<"$off"
+check "close class:pentest-browser" grep -q 'window.close({ window = "class:pentest-browser" })' <<<"$off"
+check "app-ids nettoyés après off"  bash -c '! test -f "'"$APPIDS"'"'
 
 echo "[5] wire_bar (édition shell.json sur copie temporaire)"
 SJ="$TMP/shell.json"

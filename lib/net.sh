@@ -57,8 +57,10 @@ resolve_ipv4() {
 # --- Kill switch (nftables, table dédiée) ------------------------------------
 # Génère le ruleset. Politique DROP en sortie : seuls lo, le tunnel (tun*),
 # les connexions établies et le serveur VPN sont autorisés -> zéro fuite.
-killswitch_ruleset() { # <server_ip> <proto> <port>
-  local ip="$1" proto="$2" port="$3"
+killswitch_ruleset() { # [server_ip proto port] — endpoint optionnel
+  local ip="${1:-}" proto="${2:-}" port="${3:-}" endpoint=""
+  [[ -n "$ip" && -n "$proto" && -n "$port" ]] && \
+    endpoint="    ip daddr $ip $proto dport $port accept comment \"VPN endpoint\""$'\n'
   cat <<EOF
 table $NFT_TABLE_FAMILY $NFT_TABLE_NAME {
   chain output {
@@ -66,15 +68,14 @@ table $NFT_TABLE_FAMILY $NFT_TABLE_NAME {
     oif "lo" accept
     oifname "tun*" accept
     ct state established,related accept
-    ip daddr $ip $proto dport $port accept comment "VPN endpoint"
-    counter comment "mode_pentest: tout le reste est bloque"
+$endpoint    counter comment "mode_pentest: tout le reste est bloque"
   }
 }
 EOF
 }
 
-killswitch_up() { # <server_ip> <proto> <port>
-  local rs; rs=$(killswitch_ruleset "$1" "$2" "$3")
+killswitch_up() { # [server_ip proto port]
+  local rs; rs=$(killswitch_ruleset "${1:-}" "${2:-}" "${3:-}")
   if [[ "$PENTEST_DRY_RUN" == "1" ]]; then
     printf '%s[dry-run]%s nft -f - <<\n%s\n' "$_c_dim" "$_c_reset" "$rs"
   else
