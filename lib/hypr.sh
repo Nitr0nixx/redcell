@@ -153,7 +153,7 @@ hypr_close_session_windows() {
     rm -f "$f"; return 0
   fi
 
-  local clients caller addr cls n=0 left
+  local clients caller addr n=0 left
   clients=$(hyprctl clients -j 2>/dev/null) || { rm -f "$f"; return 1; }
   caller=$(_caller_window "$clients")
   while IFS=$'\t' read -r addr _; do
