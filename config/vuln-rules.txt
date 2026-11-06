@@ -1,0 +1,24 @@
+# vuln-rules.txt — base de règles HORS-LIGNE pour « pentest recon vulns ».
+#
+# Chaque service détecté (nom + version, via nmap -sV) est comparé à ces motifs.
+# Une correspondance = un CANDIDAT À VÉRIFIER, PAS une vulnérabilité confirmée :
+# aucune exploitation n'est effectuée, on ne fait que pointer un CVE connu et sa
+# référence. À utiliser uniquement dans ton périmètre autorisé.
+#
+# Format (5 champs séparés par « | ») :
+#   motif-regex | identifiant | sévérité | titre court | référence
+# - motif-regex : ERE insensible à la casse, testé sur « <service> <version> »
+#   (ex. « http Apache httpd 2.4.49 »). Sois spécifique pour éviter les faux positifs.
+# - sévérité : critique | haute | moyenne | faible (libre).
+# Lignes vides et « # » = commentaires. Étends/corrige cette liste librement :
+# elle est volontairement courte et indicative, pas un scanner de vulnérabilités.
+
+vsftpd 2\.3\.4|CVE-2011-2523|critique|Backdoor vsftpd 2.3.4 (ouvre un shell root sur :6200)|https://nvd.nist.gov/vuln/detail/CVE-2011-2523
+Apache httpd 2\.4\.49|CVE-2021-41773|critique|Apache 2.4.49 — path traversal / RCE|https://nvd.nist.gov/vuln/detail/CVE-2021-41773
+Apache httpd 2\.4\.50|CVE-2021-42013|critique|Apache 2.4.50 — contournement du correctif 41773 (RCE)|https://nvd.nist.gov/vuln/detail/CVE-2021-42013
+OpenSSH (4\.[0-9]|[56]\.[0-9]|7\.[0-6])([^0-9]|$)|CVE-2018-15473|moyenne|OpenSSH < 7.7 — énumération d'utilisateurs|https://nvd.nist.gov/vuln/detail/CVE-2018-15473
+ProFTPD 1\.3\.5([^0-9]|$)|CVE-2015-3306|haute|ProFTPD 1.3.5 — mod_copy (copie de fichiers arbitraires)|https://nvd.nist.gov/vuln/detail/CVE-2015-3306
+Samba[^0-9]*(3\.|4\.[0-5]\.)|CVE-2017-7494|critique|Samba is_known_pipename (SambaCry) — RCE|https://nvd.nist.gov/vuln/detail/CVE-2017-7494
+Exim[^0-9]*4\.(8[7-9]|9[01])([^0-9]|$)|CVE-2019-10149|critique|Exim 4.87–4.91 — RCE (deliver_message)|https://nvd.nist.gov/vuln/detail/CVE-2019-10149
+OpenSSL/1\.0\.1[^0-9a-f]|CVE-2014-0160|haute|OpenSSL 1.0.1 — Heartbleed (fuite mémoire)|https://nvd.nist.gov/vuln/detail/CVE-2014-0160
+Microsoft IIS httpd 6\.0|CVE-2017-7269|haute|IIS 6.0 WebDAV ScStoragePathFromUrl — RCE|https://nvd.nist.gov/vuln/detail/CVE-2017-7269

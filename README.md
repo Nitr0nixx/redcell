@@ -224,6 +224,7 @@ pentest recon 10.10.123.45    # idem, cible explicite (doit être dans le scope)
 pentest recon ports <cible>   # seulement : nmap ports + services/versions
 pentest recon web <cible> 80  # seulement : empreinte + découverte de contenu web
 pentest recon show            # résumé des reco du lab
+pentest recon vulns           # pointe des CVE connus d'après les versions détectées
 pentest recon audit           # journal des sondes émises (horodate, cible, commande)
 ```
 
@@ -256,6 +257,26 @@ indique `pentest install nmap` (etc.). Clés de config : `recon_require_vpn`,
 > Rappel scope : `recon` est volontairement incapable de sonder une cible hors
 > du périmètre que tu as déclaré. C'est le garde‑fou qui en fait un outil de
 > labs **autorisés**, pas un scanner généraliste.
+
+### Analyse de vulnérabilités (hors-ligne, indicative)
+
+En fin de `pentest recon` (ou via `pentest recon vulns`), les **versions de
+services détectées** (tableau structuré du scan) sont comparées à une base de
+règles **hors-ligne** (`config/vuln-rules.txt`, éditable) pour **pointer des CVE
+connus** — ex. `vsftpd 2.3.4 → CVE-2011-2523`, `Apache 2.4.49 → CVE-2021-41773`,
+`OpenSSH < 7.7 → CVE-2018-15473`. Résultat dans `scans/vulns.md`, repris en
+section *Vulnérabilités* du writeup.
+
+> Ce sont des **candidats à vérifier manuellement**, pas des vulnérabilités
+> confirmées : l'analyse compare des chaînes de version, **n'effectue aucune
+> exploitation** et n'émet **aucune sonde** supplémentaire (elle relit les
+> résultats déjà collectés). Chaque entrée renvoie à sa fiche CVE/NVD. La base
+> est volontairement courte et **extensible** — ce n'est pas un scanner de vulns.
+
+Option `recon_searchsploit = "on"` : si **searchsploit** (base Exploit-DB locale)
+est installé, un passage `searchsploit --nmap` sur le XML du scan est ajouté
+(`scans/searchsploit.txt`). Hors-ligne lui aussi ; installé par toi
+(`pentest install searchsploit`).
 
 ### Échéance du périmètre & journal d'audit
 

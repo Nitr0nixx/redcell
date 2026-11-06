@@ -446,8 +446,11 @@ recon_full() { # <lab> <target> [--yes]
     done
   fi
 
+  # Analyse hors-ligne des versions détectées → vulnérabilités candidates.
+  vuln_analyze "$lab"
+
   ok "reco terminée. Résumé : $(_recon_scans_dir "$lab")/summary.md"
-  ok "voir : pentest recon show   |   writeup : pentest report"
+  ok "voir : pentest recon show | vulns   |   writeup : pentest report"
 }
 
 # Affiche le résumé de reco du lab.

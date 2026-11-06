@@ -168,6 +168,9 @@ report_build() { # <lab>
     else
       echo '_aucune reconnaissance enregistrée (`pentest recon <cible>`)_'
     fi
+    printf '\n## Vulnérabilités (candidates)\n\n'
+    if [[ -f "$dir/scans/vulns.md" ]]; then cat "$dir/scans/vulns.md"
+    else echo '_analyse non effectuée (`pentest recon vulns`)_'; fi
     printf '\n## Flags\n\n'
     if [[ -f "$dir/flags.md" ]] && grep -qE '^- ' "$dir/flags.md"; then grep -E '^- ' "$dir/flags.md"; else echo '_aucun_'; fi
     printf '\n## Notes\n\n'

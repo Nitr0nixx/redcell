@@ -56,3 +56,6 @@ distrobox|distrobox|pacman
 #: Rapport / writeup (export pandoc)
 pandoc|pandoc|pacman
 wkhtmltopdf|wkhtmltopdf|aur
+
+#: Vulnérabilités (analyse hors-ligne)
+searchsploit|exploitdb|aur
