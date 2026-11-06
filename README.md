@@ -266,8 +266,9 @@ TryHackMe active quelques heures) et pour **prouver** ce que tu as touché :
   la disposition déjà ouverte n'est pas relancée (elle est refocalisée), seules
   les manquantes sont ouvertes — plus de doublons. (Changer de lab à chaud reste
   refusé : fais `off` puis `on`.)
-- Spécifique à **Omarchy/Hyprland en Lua** et au terminal **foot** : adapter
-  `layout.conf` pour un autre terminal.
+- Spécifique à **Omarchy/Hyprland en Lua**. Le **terminal** est en revanche
+  configurable (clé `terminal` : foot, kitty, alacritty, ghostty, wezterm — le
+  bon drapeau est choisi automatiquement ; repli sur le premier présent).
 - Les outils de pentest eux-mêmes ne sont **pas** fournis ni lancés : ce mode
   prépare l'environnement, rien d'offensif.
 
@@ -385,6 +386,7 @@ sauvegarde ; `--no-bar` saute cette étape, `--uninstall` le retire.
 | `dnd` | `on` = silence les notifications | `on` |
 | `menu_integration` | `on` = outils cyber visibles seulement en mode + lanceurs | `on` |
 | `menu_focus` | `on` = masque aussi les apps hors liste blanche pendant le mode | `on` |
+| `terminal` | terminal des fenêtres du mode (foot/kitty/alacritty/ghostty/wezterm) | `foot` |
 | `browser_home` | page d'accueil du navigateur isolé | `https://tryhackme.com` |
 | `vpn_dir` | dossier supplémentaire où chercher les `.ovpn` | `~/Downloads` |
 | `vpn_picker_on_start` | `on` = ouvre l'assistant VPN à l'activation | `on` |

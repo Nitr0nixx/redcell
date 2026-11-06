@@ -89,7 +89,12 @@ doctor_report() {
   d_head "Dépendances cœur"
   d_cmd hyprctl fail "requis : mode conçu pour Hyprland"
   d_cmd omarchy fail "requis : bascule de thème"
-  d_cmd foot    warn "terminal du layout ; adapte layout.conf sinon"
+  local _term; _term=$(term_bin)
+  if command -v "$_term" >/dev/null 2>&1; then
+    d_line ok "terminal : $_term" "clé 'terminal' (défaut foot)"
+  else
+    d_line warn "aucun terminal connu trouvé" "installe foot/kitty/alacritty/ghostty, ou règle 'terminal'"
+  fi
   d_cmd tmux    warn "session persistante du lab"
   d_cmd firefox warn "navigateur isolé du lab"
 

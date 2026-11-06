@@ -52,6 +52,9 @@ hypr_open_layout() {
     cmd=$(printf '%s' "$cmd" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')
     [[ -n "$ws" && -n "$cmd" ]] || continue
     cmd=${cmd//\{LAB\}/$lab}
+    # @TERM@ = préfixe du terminal configuré pour l'app-id de cette ligne
+    # (voir lib/term.sh) — rend la disposition indépendante de foot.
+    [[ "$cmd" == *@TERM@* ]] && cmd=${cmd//@TERM@/$(term_prefix "$appid")}
     [[ -z "$first_ws" ]] && first_ws="$ws"
 
     # Idempotence : si une fenêtre de cette classe est déjà ouverte (ré-activation

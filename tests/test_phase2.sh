@@ -27,6 +27,10 @@ fi
 exit 0
 STUB
 chmod +x "$TMP/bin/hyprctl"
+# Stub 'foot' pour que term_bin le choisisse de façon déterministe (le runner
+# de CI n'a pas forcément d'émulateur installé).
+printf '#!/usr/bin/env bash\nexit 0\n' > "$TMP/bin/foot"
+chmod +x "$TMP/bin/foot"
 export PATH="$TMP/bin:$PATH"
 
 pass=0; fail=0
@@ -39,7 +43,7 @@ check "INACTIVE au repos"        bash -c '[ "$('"$(printf %q "$PENTEST")"' bar)"
 
 echo "[2] ouverture de la disposition (dry-run)"
 out=$("$PENTEST" on demo 2>&1)
-check "exec workspace 1 (terminal)"  grep -q "workspace 1 silent.*foot --app-id pentest-term" <<<"$out"
+check "exec workspace 1 (terminal)"  grep -q "workspace 1 silent.*foot --app-id=pentest-term -e" <<<"$out"
 check "exec workspace 2 (navigateur)" grep -q "workspace 2 silent.*pentest-browser" <<<"$out"
 check "{LAB} substitué (tmux pentest-demo)" grep -q "pentest-demo" <<<"$out"
 check "app-ids enregistrés"          test -f "$APPIDS"
