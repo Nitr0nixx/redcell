@@ -211,14 +211,21 @@ L'enchaînement (niveau *énumération + découverte web légère*) :
 
 1. **liveness** — un ping ICMP (informatif ; on scanne même si la cible filtre) ;
 2. **ports** — `nmap` en *connect scan* (pas besoin de root), top‑1000 ports en
-   `-T3`, puis détection de **services/versions** (`-sV -sC`) sur les ports ouverts ;
-3. **suivi par service détecté**, et seulement eux : HTTP → `whatweb` + découverte
-   de contenu légère (`gobuster`/`ffuf`, petite wordlist fournie, débit limité) ;
-   DNS → `dnsrecon` ; SMB → `smbclient -L` (listing anonyme).
+   `-T3`, puis détection de **services/versions** (`-sV -sC`) sur les ports ouverts.
+   La sortie XML (`-oX`) est **analysée** (python3) en un **tableau structuré**
+   `Port | Proto | Service | Version` ajouté à `scans/summary.md` (et repris tel
+   quel dans le writeup). Sans python3, on retombe sur le résumé simple ;
+3. **suivi par service détecté** — routé par le **nom de service** nmap, pas le
+   numéro de port : un HTTP sur un port exotique est suivi, un `80` non‑HTTP ne
+   l'est pas. HTTP/HTTPS → `whatweb` + découverte de contenu légère
+   (`gobuster`/`ffuf`, petite wordlist fournie, débit limité) ; DNS → `dnsrecon` ;
+   SMB → `smbclient -L` (listing anonyme). (Repli sur le numéro de port si le
+   tableau structuré n'a pas pu être produit.)
 
 **Aucun** brute‑force, **aucun** exploit, **aucun** scan de vulnérabilités lourd :
 c'est la phase de reconnaissance, pas d'attaque. Chaque sortie est archivée
-horodatée dans `~/pentest/<lab>/scans/`, résumée dans `scans/summary.md`, et
+horodatée dans `~/pentest/<lab>/scans/` (`.txt`, `.gnmap`, `.xml`, plus
+`services-latest.tsv` pour le routage), résumée dans `scans/summary.md`, et
 reprise automatiquement par `pentest report` (section *Reconnaissance* du writeup).
 
 Les outils manquants ne sont **jamais** installés automatiquement : la commande

@@ -153,6 +153,37 @@ _recon_summary() { # <lab> <ligne markdown>
   printf -- '%s\n' "$line" >> "$f"
 }
 
+# Parse un XML nmap (-oX) en lignes « port<TAB>proto<TAB>service<TAB>version »,
+# ports 'open' seulement. Source structurée robuste (vs grep sur le texte).
+# Utilise python3 (stdlib) ; renvoie 1 s'il est absent ou si le XML est illisible.
+_recon_nmap_xml_tsv() { # <fichier.xml>  → TSV sur stdout
+  command -v python3 >/dev/null 2>&1 || return 1
+  [[ -f "$1" ]] || return 1
+  python3 -I - "$1" <<'PY'
+import sys, xml.etree.ElementTree as ET
+try:
+    root = ET.parse(sys.argv[1]).getroot()
+except Exception:
+    sys.exit(1)
+rows = 0
+for host in root.findall('host'):
+    for port in host.findall('./ports/port'):
+        st = port.find('state')
+        if st is None or st.get('state') != 'open':
+            continue
+        svc = port.find('service')
+        name = (svc.get('name') if svc is not None else '') or '?'
+        ver = ''
+        if svc is not None:
+            ver = ' '.join(x for x in (svc.get('product'), svc.get('version'),
+                                       svc.get('extrainfo')) if x)
+        print('\t'.join((port.get('portid', '?'), port.get('protocol', ''),
+                         name, ver.strip() or '-')))
+        rows += 1
+sys.exit(0 if rows else 1)
+PY
+}
+
 # --- Étapes de reconnaissance -------------------------------------------------
 
 # Liveness : un seul ping (déjà la philosophie de net.sh).
@@ -192,9 +223,28 @@ recon_ports() { # <lab> <target>  → imprime la liste des ports ouverts
     _recon_summary "$lab" "## $ts — $t"
     _recon_summary "$lab" "- Ports ouverts : \`$ports\`"
     # Services/versions sur les ports trouvés (scripts par défaut, pas de vuln).
-    local svc="$dir/nmap-services-$ts.txt"
-    _recon_run "$svc" nmap -sV -sC -n -Pn -T"$timing" -p "$ports" "$t" >&2 || true
-    _recon_summary "$lab" "- Détail services : \`$(basename "$svc")\`"
+    # XML (-oX) en plus du texte : sert à produire un tableau structuré.
+    local svc="$dir/nmap-services-$ts"
+    _recon_run "$svc.txt" nmap -sV -sC -n -Pn -T"$timing" -oX "$svc.xml" -p "$ports" "$t" >&2 || true
+    # Tableau structuré depuis le XML (si python3 présent) ; sinon simple renvoi.
+    local tsv; tsv=$(_recon_nmap_xml_tsv "$svc.xml" 2>/dev/null || true)
+    if [[ -n "$tsv" ]]; then
+      printf '%s\n' "$tsv" > "$dir/services-latest.tsv"
+      cp -f "$dir/services-latest.tsv" "$dir/services-$ts.tsv" 2>/dev/null || true
+      _recon_summary "$lab" ""
+      _recon_summary "$lab" "| Port | Proto | Service | Version |"
+      _recon_summary "$lab" "|------|-------|---------|---------|"
+      local pn pr sv vr
+      while IFS=$'\t' read -r pn pr sv vr; do
+        [[ -n "$pn" ]] || continue
+        _recon_summary "$lab" "| $pn | $pr | $sv | $vr |"
+      done <<<"$tsv"
+      _recon_summary "$lab" ""
+      _recon_summary "$lab" "- Détail brut : \`$(basename "$svc.txt")\`"
+    else
+      : > "$dir/services-latest.tsv"   # pas de table : évite une reco périmée
+      _recon_summary "$lab" "- Détail services : \`$(basename "$svc.txt")\`"
+    fi
   elif [[ "$PENTEST_DRY_RUN" != "1" ]]; then
     warn "aucun port ouvert détecté dans le top-$topn." >&2
     _recon_summary "$lab" "## $ts — $t"
@@ -277,8 +327,22 @@ recon_full() { # <lab> <target> [--yes]
 
   local ports; ports=$(recon_ports "$lab" "$t")
 
-  # Suivi déclenché UNIQUEMENT par les ports réellement ouverts.
-  if [[ -n "$ports" ]]; then
+  # Suivi déclenché par les services réellement détectés. Si le tableau
+  # structuré existe (nmap -oX + python3), on route par NOM de service — plus
+  # fiable : un HTTP sur un port exotique est suivi, un 80 non-HTTP ne l'est pas.
+  # Sinon, repli sur le numéro de port (comportement historique).
+  local svcfile="$(_recon_scans_dir "$lab")/services-latest.tsv"
+  if [[ -s "$svcfile" ]]; then
+    local pn pr sv vr
+    while IFS=$'\t' read -r pn pr sv vr; do
+      [[ -n "$pn" ]] || continue
+      case "$sv" in
+        http|http-alt|http-proxy|https|https-alt|ssl/http|ssl|ssl/https|sip) recon_web "$lab" "$t" "$pn" ;;
+        domain)                   recon_dns "$lab" "$t" ;;
+        microsoft-ds|netbios-ssn) recon_smb "$lab" "$t" ;;
+      esac
+    done < "$svcfile"
+  elif [[ -n "$ports" ]]; then
     local IFS=,; local p
     for p in $ports; do
       case "$p" in

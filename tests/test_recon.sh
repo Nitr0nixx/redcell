@@ -98,6 +98,72 @@ check "10.11.5.5 ∉ /16"                grep -q "OUT16" <<<"$O"
 check "192.168.1.42 ∈ /24"             grep -q "IN24"  <<<"$O"
 check "192.168.2.42 ∉ /24"             grep -q "OUT24" <<<"$O"
 
+echo "[11b] parse XML nmap -> tableau structuré (ports ouverts seulement)"
+cat > "$TMP/scan.xml" <<'XML'
+<?xml version="1.0"?>
+<nmaprun><host><ports>
+<port protocol="tcp" portid="22"><state state="open"/><service name="ssh" product="OpenSSH" version="7.6p1" extrainfo="Ubuntu"/></port>
+<port protocol="tcp" portid="80"><state state="open"/><service name="http" product="Apache httpd" version="2.4.29"/></port>
+<port protocol="tcp" portid="23"><state state="closed"/><service name="telnet"/></port>
+<port protocol="tcp" portid="445"><state state="open"/><service name="microsoft-ds"/></port>
+</ports></host></nmaprun>
+XML
+if command -v python3 >/dev/null 2>&1; then
+  O=$(bash -c '
+    source "'"$REPO"'/lib/common.sh"; source "'"$REPO"'/lib/recon.sh"
+    _recon_nmap_xml_tsv "'"$TMP"'/scan.xml"' 2>&1)
+  check "ssh + version extraits"      bash -c 'grep -qP "^22\ttcp\tssh\tOpenSSH 7.6p1 Ubuntu$" <<<"$0"' "$O"
+  check "http + version extraits"     bash -c 'grep -qP "^80\ttcp\thttp\tApache httpd 2.4.29$" <<<"$0"' "$O"
+  check "service sans version -> '-'" bash -c 'grep -qP "^445\ttcp\tmicrosoft-ds\t-$" <<<"$0"' "$O"
+  check "port fermé (23) exclu"       bash -c '! grep -q "telnet" <<<"$0"' "$O"
+else
+  echo "  (python3 absent — parser XML non testé)"
+fi
+
+echo "[11c] recon ports (nmap stubé) -> tableau structuré dans summary.md"
+# Stubs déterministes : nmap écrit un .gnmap (ports) puis un .xml (services),
+# ping réussit sans réseau. AUCUN scan réel ; valide le chemin de parsing.
+mkdir -p "$TMP/bin"
+cat > "$TMP/bin/nmap" <<'STUB'
+#!/usr/bin/env bash
+out=""; mode=""; a=("$@")
+for ((i=0;i<${#a[@]};i++)); do
+  [[ "${a[i]}" == "-oG" ]] && { mode=g; out="${a[i+1]}"; }
+  [[ "${a[i]}" == "-oX" ]] && { mode=x; out="${a[i+1]}"; }
+done
+if [[ "$mode" == g ]]; then
+  printf 'Host: T ()\tPorts: 22/open/tcp//ssh///, 80/open/tcp//http///\n' > "$out"
+elif [[ "$mode" == x ]]; then
+  cat > "$out" <<'XML'
+<?xml version="1.0"?>
+<nmaprun><host><ports>
+<port protocol="tcp" portid="22"><state state="open"/><service name="ssh" product="OpenSSH" version="7.6p1"/></port>
+<port protocol="tcp" portid="80"><state state="open"/><service name="http" product="Apache httpd" version="2.4.29"/></port>
+</ports></host></nmaprun>
+XML
+fi
+exit 0
+STUB
+printf '#!/usr/bin/env bash\nexit 0\n' > "$TMP/bin/ping"
+chmod +x "$TMP/bin/nmap" "$TMP/bin/ping"
+# Config permissive pour ce cas : ni VPN requis, ni confirmation.
+cat > "$XDG_CONFIG_HOME/mode-pentest/config.toml" <<'CFG'
+lab_root = "~/pentest"
+menu_integration = "off"
+manage_hosts = "off"
+recon_require_vpn = "off"
+recon_confirm = "off"
+CFG
+PATH="$TMP/bin:$PATH" "$PENTEST" recon ports 10.10.10.10 >/dev/null 2>&1
+SUM="$LABDIR/scans/summary.md"
+check "summary.md créé"               test -f "$SUM"
+check "en-tête de tableau présent"    grep -q "| Port | Proto | Service | Version |" "$SUM"
+check "ligne ssh (service+version)"   grep -q "| 22 | tcp | ssh | OpenSSH 7.6p1 |" "$SUM"
+check "ligne http (service+version)"  grep -q "| 80 | tcp | http | Apache httpd 2.4.29 |" "$SUM"
+check "services-latest.tsv écrit"     test -s "$LABDIR/scans/services-latest.tsv"
+"$PENTEST" report >/dev/null 2>&1
+check "writeup reprend le tableau"    grep -q "| 22 | tcp | ssh |" "$LABDIR/report/writeup.md"
+
 echo "[12] help : recon documenté"
 check "recon dans l'aide"              bash -c '"'"$PENTEST"'" help 2>&1 | grep -q "pentest recon"'
 
