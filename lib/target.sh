@@ -100,6 +100,7 @@ target_set() { # <lab> <ip> [nom]
     fi
   fi
   declare -F bar_refresh >/dev/null 2>&1 && bar_refresh || true
+  browser_scope_changed "$lab"
   return 0
 }
 

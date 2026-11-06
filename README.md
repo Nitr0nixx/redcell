@@ -260,6 +260,20 @@ Par défaut :
   comptes perso, télémétrie/sync coupées, proxy local Burp/ZAP pré-réglé mais
   **désactivé** par défaut — voir `bin/pentest-browser`).
 
+**Refus automatique des cookies** : le navigateur isolé embarque l'extension
+open source **Consent-O-Matic** (Université d'Aarhus, signée par Mozilla),
+qui répond « non » à toutes les catégories facultatives des bandeaux de
+cookies. (Le refus intégré de Firefox, `cookiebanners.*`, a été retiré en
+Firefox 158.) **Jamais sur les cibles** : les hôtes du scope du lab (IP, noms,
+CIDR ≤ /24 développés, nom DNS `<room>.thm`) sont ajoutés à
+`extensions.webextensions.restrictedDomains`, où **aucune extension ne
+s'exécute**, donc le comportement d'une cible n'est jamais modifié (vérifié :
+un script d'extension s'exécute sur une IP hors liste et pas sur une IP de
+la liste). Firefox ne lit ce réglage qu'au démarrage : quand une cible est
+ajoutée alors que le navigateur est ouvert, `pentest` propose de le relancer
+en restaurant les onglets (`pentest open browser-restart`). Désactivable :
+`browser_cookie_reject = "off"`. Voir les hôtes exclus : `pentest scope hosts`.
+
 `pentest off` ferme **toutes les fenêtres ouvertes pendant le mode** : à
 l'activation, les fenêtres existantes sont mémorisées (adresses Hyprland) et ne
 sont jamais touchées ; tout ce qui est né ensuite est fermé en douceur (comme

@@ -144,3 +144,72 @@ lab_pick() {
     printf '%s' "$choice"
   fi
 }
+
+# ---------------------------------------------------------------------------
+# Hôtes du scope au format « liste de domaines » (pour le navigateur isolé :
+# les extensions — dont le refus auto des cookies — n'y tournent PAS, afin de
+# ne jamais modifier le comportement d'une cible).
+#   - IP / nom d'hôte : tels quels (schéma, chemin et port retirés) ;
+#   - CIDR /24 à /32 : développé en IP ; plus large : ignoré (avertissement) ;
+#   - « *.domaine » : « domaine » + la forme joker ;
+#   - + le nom DNS de la cible (TARGET_HOST, ex. room.thm) s'il existe.
+# ---------------------------------------------------------------------------
+lab_scope_hosts() { # <lab>
+  local lab="$1" e base pfx a b c d n i meta host
+  {
+    while IFS= read -r e; do
+      e=${e%%[[:space:]]*}; e=${e#*://}; e=${e%%/[!0-9]*}
+      if [[ "$e" =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})/([0-9]{1,2})$ ]]; then
+        a=${BASH_REMATCH[1]} b=${BASH_REMATCH[2]} c=${BASH_REMATCH[3]} d=${BASH_REMATCH[4]} pfx=${BASH_REMATCH[5]}
+        if (( pfx < 24 )); then
+          warn "scope : $e trop large pour l'exclusion navigateur (≥ /24 requis) — ignoré." ; continue
+        fi
+        n=$(( 1 << (32 - pfx) )); base=$(( d & ~(n - 1) ))
+        for (( i = 0; i < n; i++ )); do printf '%s.%s.%s.%s\n' "$a" "$b" "$c" "$((base + i))"; done
+        continue
+      fi
+      e=${e%%/*}
+      [[ "$e" =~ ^\[ ]] || e=${e%%:*}          # retire un éventuel :port (hors IPv6)
+      [[ -n "$e" ]] || continue
+      if [[ "$e" == \*.* ]]; then printf '%s\n%s\n' "${e#\*.}" "$e"; else printf '%s\n' "$e"; fi
+    done < <(lab_scope_targets "$lab")
+    meta="$(lab_dir "$lab")/meta.env"
+    if [[ -f "$meta" ]]; then
+      host=$( (set +u; source "$meta" 2>/dev/null; printf '%s' "${TARGET_HOST:-}") )
+      [[ -n "$host" ]] && printf '%s\n' "$host"
+    fi
+  } | tr 'A-Z' 'a-z' | awk 'NF && !seen[$0]++'
+  return 0
+}
+
+# Le scope a changé : le navigateur isolé (s'il tourne) doit être relancé pour
+# que la nouvelle cible soit exclue des extensions. Propose de le faire.
+browser_scope_changed() { # <lab>
+  local lab="$1"
+  [[ "$PENTEST_DRY_RUN" == "1" ]] && return 0
+  command -v hyprctl >/dev/null 2>&1 || return 0
+  hyprctl clients -j 2>/dev/null | jq -e 'any(.[]; .class=="pentest-browser")' >/dev/null 2>&1 || return 0
+  warn "navigateur isolé ouvert : relance-le pour exclure la nouvelle cible du refus auto des cookies."
+  if [[ -t 0 ]] && command -v gum >/dev/null 2>&1 \
+     && gum confirm "Relancer le navigateur isolé maintenant (onglets restaurés) ?"; then
+    browser_restart "$lab"
+  else
+    warn "plus tard : pentest open browser-restart"
+  fi
+  return 0
+}
+
+# Ferme le navigateur isolé puis le relance en restaurant ses onglets.
+browser_restart() { # <lab>
+  local lab="$1" n=0 prof="${XDG_DATA_HOME:-$HOME/.local/share}/mode-pentest/firefox"
+  if hypr_available; then
+    hyprctl dispatch 'hl.dsp.window.close({ window = "class:pentest-browser" })' >/dev/null 2>&1 || true
+  fi
+  # Attend la fin du processus Firefox du profil isolé (≤ 10 s).
+  while pgrep -f -- "-profile $prof" >/dev/null 2>&1; do
+    n=$((n+1)); (( n > 50 )) && { warn "le navigateur ne s'est pas fermé (confirmation demandée ?) — relance annulée."; return 1; }
+    sleep 0.2
+  done
+  PENTEST_BROWSER_RESTORE=1 setsid --fork pentest-browser "$lab" >/dev/null 2>&1
+  ok "navigateur isolé relancé (exclusions du scope à jour)."
+}
