@@ -1,5 +1,9 @@
 # Mode Pentest
 
+[![CI](https://github.com/Nitr0nixx/redcell/actions/workflows/ci.yml/badge.svg)](https://github.com/Nitr0nixx/redcell/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Shell: Bash](https://img.shields.io/badge/shell-bash-4EAA25.svg?logo=gnubash&logoColor=white)](https://www.gnu.org/software/bash/)
+
 Bascule un poste **Omarchy** (Arch + Hyprland) en environnement de travail pour
 labs et missions de pentest **autorisés**, via une commande unique, puis restaure
 l'état d'origine à la sortie. Projet de portfolio cybersécurité : code Bash propre,
