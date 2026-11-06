@@ -231,8 +231,10 @@ indique `pentest install nmap` (etc.). Clés de config : `recon_require_vpn`,
 - Le **kill switch** a une politique *drop* : tant qu'il est actif sans tunnel,
   seules les connexions établies et le loopback passent (c'est voulu). `off` /
   `panic` le retirent toujours.
-- Re-lancer `pentest on` quand le mode est déjà actif **ré-ouvre** la
-  disposition (fenêtres en double possibles) ; préfère `off` puis `on`.
+- Re-lancer `pentest on` sur le **même lab** est **idempotent** : une fenêtre de
+  la disposition déjà ouverte n'est pas relancée (elle est refocalisée), seules
+  les manquantes sont ouvertes — plus de doublons. (Changer de lab à chaud reste
+  refusé : fais `off` puis `on`.)
 - Spécifique à **Omarchy/Hyprland en Lua** et au terminal **foot** : adapter
   `layout.conf` pour un autre terminal.
 - Les outils de pentest eux-mêmes ne sont **pas** fournis ni lancés : ce mode

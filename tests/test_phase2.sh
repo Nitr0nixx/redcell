@@ -12,6 +12,23 @@ export PENTEST_DRY_RUN=1
 mkdir -p "$XDG_STATE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME"
 APPIDS="$XDG_STATE_HOME/mode-pentest/layout.appids"
 
+# Faux Hyprland : rend ces tests DÉTERMINISTES et indépendants d'une session
+# réelle (donc exécutables en CI). On simule une instance (signature) et on
+# stube 'hyprctl' : 'clients -j' renvoie le JSON de $HYPR_FAKE_CLIENTS (ou []),
+# tout le reste réussit sans effet. hypr_window_exists interroge ce stub.
+export HYPRLAND_INSTANCE_SIGNATURE=test
+mkdir -p "$TMP/bin"
+cat > "$TMP/bin/hyprctl" <<'STUB'
+#!/usr/bin/env bash
+if [[ "$*" == *"clients -j"* ]]; then
+  if [[ -f "${HYPR_FAKE_CLIENTS:-}" ]]; then cat "$HYPR_FAKE_CLIENTS"; else echo '[]'; fi
+  exit 0
+fi
+exit 0
+STUB
+chmod +x "$TMP/bin/hyprctl"
+export PATH="$TMP/bin:$PATH"
+
 pass=0; fail=0
 check() { local d="$1"; shift; if "$@"; then echo "  ✓ $d"; pass=$((pass+1)); else echo "  ✗ $d"; fail=$((fail+1)); fi; }
 
@@ -50,6 +67,20 @@ off=$("$PENTEST" off 2>&1)
 check "close class:pentest-term"    grep -q 'window.close({ window = "class:pentest-term" })' <<<"$off"
 check "close class:pentest-browser" grep -q 'window.close({ window = "class:pentest-browser" })' <<<"$off"
 rm -f "$XDG_CONFIG_HOME/mode-pentest/config.toml"
+
+echo "[4c] idempotence : re-'on' ne relance pas une fenêtre déjà ouverte"
+"$PENTEST" on demo >/dev/null 2>&1              # active (aucune fenêtre simulée)
+export HYPR_FAKE_CLIENTS="$TMP/clients.json"
+# On simule que SEUL le terminal est déjà ouvert.
+printf '[{"class":"pentest-term","address":"0x1"}]\n' > "$HYPR_FAKE_CLIENTS"
+reout=$("$PENTEST" on demo 2>&1)                # ré-application (déjà actif)
+check "terminal déjà ouvert détecté"   grep -q "déjà ouvert.*pentest-term" <<<"$reout"
+check "pas de relance du terminal"     bash -c '! grep -q "workspace 1 silent.*pentest-term" <<<"$0"' "$reout"
+check "focalise le terminal existant"  grep -q 'focus.*class:pentest-term' <<<"$reout"
+check "navigateur (absent) relancé"    grep -q "workspace 2 silent.*pentest-browser" <<<"$reout"
+check "app-id terminal tout de même noté (pour off)" grep -q "^pentest-term$" "$APPIDS"
+unset HYPR_FAKE_CLIENTS
+"$PENTEST" off >/dev/null 2>&1
 
 echo "[5] wire_bar (édition shell.json sur copie temporaire)"
 SJ="$TMP/shell.json"

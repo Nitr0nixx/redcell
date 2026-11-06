@@ -19,6 +19,16 @@ layout_file() {
 
 hypr_available() { command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; }
 
+# Vrai si une fenêtre de classe <appid> est DÉJÀ ouverte (même critère que la
+# fermeture ciblée). Sert à rendre l'ouverture de la disposition idempotente :
+# on ne relance pas une fenêtre déjà présente lors d'un second 'pentest on'.
+hypr_window_exists() {
+  local appid="$1"
+  [[ -n "$appid" ]] || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+  hyprctl clients -j 2>/dev/null | jq -e --arg c "$appid" 'any(.[]; .class==$c)' >/dev/null 2>&1
+}
+
 # Échappe une chaîne pour l'insérer dans une chaîne Lua entre guillemets doubles.
 _lua_escape() { local s="$1"; s=${s//\\/\\\\}; s=${s//\"/\\\"}; printf '%s' "$s"; }
 
@@ -43,6 +53,16 @@ hypr_open_layout() {
     [[ -n "$ws" && -n "$cmd" ]] || continue
     cmd=${cmd//\{LAB\}/$lab}
     [[ -z "$first_ws" ]] && first_ws="$ws"
+
+    # Idempotence : si une fenêtre de cette classe est déjà ouverte (ré-activation
+    # du même lab), on NE relance PAS — on l'inscrit quand même dans la liste
+    # pour que 'pentest off' la ferme, et on la refocalise.
+    if [[ -n "$appid" ]] && hypr_window_exists "$appid"; then
+      log "déjà ouvert [$ws] $appid — pas de relance (idempotent)."
+      printf '%s\n' "$appid" >> "$(_appids_file)"
+      runq hyprctl dispatch "hl.dsp.focus({ window = \"class:$appid\" })" || true
+      continue
+    fi
 
     log "ouverture [$ws] $appid : $cmd"
     # Dispatcher Lua exec_cmd avec la règle one-shot [workspace N silent].
