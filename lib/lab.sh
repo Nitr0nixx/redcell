@@ -90,3 +90,57 @@ lab_journal() {
   mkdir -p "$(dirname "$f")"
   printf '[%s] %s\n' "$(date +'%Y-%m-%dT%H:%M:%S%z')" "$msg" >> "$f"
 }
+
+# ---------------------------------------------------------------------------
+# Labs existants : liste + sélecteur interactif (pour « pentest on » sans nom).
+# ---------------------------------------------------------------------------
+
+# Liste les labs, le plus récemment utilisé d'abord (date du journal, sinon du
+# dossier). Sortie : nom<TAB>AAAA-MM-JJ<TAB>détails (room / cible si connues).
+lab_list() {
+  [[ -d "$PENTEST_LAB_ROOT" ]] || return 0
+  local d name ts meta room ip extra
+  for d in "$PENTEST_LAB_ROOT"/*/; do
+    [[ -d "$d" ]] || continue
+    name=$(basename "$d")
+    if [[ -f "$d/journal.log" ]]; then ts=$(stat -c %Y "$d/journal.log")
+    else ts=$(stat -c %Y "$d"); fi
+    room=""; ip=""; meta="$d/meta.env"
+    if [[ -f "$meta" ]]; then
+      room=$( (set +u; source "$meta" 2>/dev/null; printf '%s' "${ROOM:-}") )
+      ip=$(   (set +u; source "$meta" 2>/dev/null; printf '%s' "${TARGET_IP:-}") )
+    fi
+    extra="${room:+room $room}${room:+${ip:+ · }}${ip:+cible $ip}"
+    printf '%s\t%s\t%s\t%s\n' "$ts" "$name" "$(date -d "@$ts" +%F)" "$extra"
+  done | sort -t$'\t' -k1,1nr | cut -f2-
+  return 0
+}
+
+# Sélecteur : choisir un lab existant ou en créer un nouveau.
+# Affiche le nom choisi sur stdout (vide = annulé). L'interface va sur le TTY.
+LAB_PICK_NEW="+ Nouveau lab…"
+lab_pick() {
+  local labs choice name
+  labs=$(lab_list)
+  if command -v fzf >/dev/null 2>&1; then
+    choice=$( { printf '%s\t\t\n' "$LAB_PICK_NEW"; [[ -n "$labs" ]] && printf '%s\n' "$labs"; } \
+      | column -t -s $'\t' -o '   ' \
+      | fzf --layout=reverse --height=~50% --border --prompt='lab > ' \
+            --header 'Choisis un lab existant ou crée-en un · Entrée = valider · Échap = annuler' \
+      || true)
+    choice=${choice%%   *}            # garde la 1re colonne (le nom)
+    choice=${choice%"${choice##*[![:space:]]}"}
+  else
+    local opts=("$LAB_PICK_NEW") l
+    while IFS=$'\t' read -r l _; do [[ -n "$l" ]] && opts+=("$l"); done <<<"$labs"
+    PS3="Numéro du lab : "
+    select choice in "${opts[@]}"; do break; done </dev/tty >&2
+  fi
+  [[ -n "$choice" ]] || return 0
+  if [[ "$choice" == "$LAB_PICK_NEW" ]]; then
+    read -r -e -p "Nom du nouveau lab : " name </dev/tty >&2 || true
+    printf '%s' "$name"
+  else
+    printf '%s' "$choice"
+  fi
+}

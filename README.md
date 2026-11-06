@@ -35,6 +35,8 @@ lisible et documenté.
 
 ```bash
 pentest on <nom-du-lab>     # ambiance + workspaces + dossier du lab ; mode actif
+pentest on                  # sans nom : choisir un lab existant (fzf) ou en créer un
+pentest labs                # liste les labs (récents d'abord, room/cible)
 pentest off                 # restaure l'état d'avant, ferme les fenêtres du mode
 pentest status              # mode, lab, thème, notifications, dossier, cible/scope
 pentest scope               # affiche le périmètre autorisé du lab actif
