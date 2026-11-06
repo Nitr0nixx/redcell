@@ -357,14 +357,36 @@ sauvegarde ; `--no-bar` saute cette étape, `--uninstall` le retire.
 | `vpn_picker_on_start` | `on` = ouvre l'assistant VPN à l'activation | `on` |
 | `manage_hosts` | `on` = `pentest target <ip> <nom>` gère une entrée `/etc/hosts` | `on` |
 
+## Bilan de santé : `pentest doctor`
+
+`pentest doctor` dresse un **bilan en lecture seule** (il ne modifie rien, pas
+de sudo) : installation (liens, thème, config), intégration bureau (indicateur
+de barre dans `shell.json`, raccourci dans `bindings.lua`), dépendances cœur
+(`hyprctl`, `omarchy`, `foot`, `tmux`, firefox), réseau (`openvpn`, `nft`,
+`sudo`), outils de reco présents/absents, état runtime (mode, thème cohérent,
+tunnel, kill switch) et cohérence de config (thème de secours installé,
+`~/pentest` en 700). Chaque ligne est `✓` (OK), `!` (optionnel manquant) ou
+`✗` (bloquant). **Code de sortie : 0 si aucun `✗`, 1 sinon** — utilisable en
+script. C'est le premier réflexe après une installation ou en cas de souci.
+
+```bash
+pentest doctor
+```
+
 ## Développement / tests
 
 ```bash
-./tests/test_phase1.sh   # tests en dry-run : aucune action réelle sur le bureau
+./tests/run.sh              # toute la suite ; sort ≠ 0 si un fichier échoue (CI)
+./tests/run.sh recon        # filtre : seulement les fichiers dont le nom matche
+./tests/test_phase1.sh      # un fichier isolé (dry-run, aucune action réelle)
 ```
 
-Les scripts tournent en `PENTEST_DRY_RUN=1` pour afficher les actions sans les
-exécuter — pratique pour tester la logique d'état sans toucher au système.
+Les scripts tournent en `PENTEST_DRY_RUN=1` et dans des répertoires `HOME`/XDG
+temporaires pour afficher les actions sans les exécuter — on teste la logique
+d'état sans toucher au système. La **CI GitHub Actions**
+([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) lance ShellCheck
+(`-x -S warning`) sur `bin/`, `lib/`, `tests/` et `install.sh`, puis
+`tests/run.sh`, à chaque push et pull request.
 
 ## Arborescence
 

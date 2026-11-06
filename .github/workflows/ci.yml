@@ -1,0 +1,35 @@
+name: CI
+
+# Lint + tests sur chaque push et pull request. Aucun paquet cyber installé,
+# aucune action réseau : la suite tourne en bac à sable (dry-run + HOME/XDG
+# temporaires). Voir tests/run.sh et README (section Développement / tests).
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Lint bin/ et lib/
+        # bin/pentest source lib/*.sh : -x suit les `source`. Seuil "warning"
+        # (vrais défauts) ; on pourra resserrer à "style" une fois la base nette.
+        run: shellcheck -x -S warning bin/pentest bin/pentest-toggle bin/pentest-browser lib/*.sh tests/*.sh install.sh
+
+  tests:
+    name: Suite de tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dépendances de test
+        # Les tests tournent en dry-run ; on fournit juste les utilitaires
+        # shell attendus par les scripts (fzf pour les chemins de menu).
+        run: sudo apt-get update && sudo apt-get install -y fzf
+      - name: Lancer la suite
+        run: ./tests/run.sh
