@@ -168,7 +168,7 @@ _menu_inplace_restore() { # <path> <id>
 
 # --- Apps cyber : masquer (normal) / révéler (pentest) -----------------------
 menu_hide_app() { # <id>  — crée l'ombre si l'app système est installée
-  local id="$1" sys local_f="$MENU_APPS_DIR/$id.desktop"
+  local id="$1" sys; local local_f="$MENU_APPS_DIR/$id.desktop"
   sys=$(_menu_sys_path "$id"); [[ -n "$sys" ]] || return 0
   if [[ -e "$local_f" ]] && ! _menu_is_ours "$local_f"; then
     warn "menu : $id.desktop déjà présent (perso) — laissé tel quel."; return 0
@@ -176,7 +176,7 @@ menu_hide_app() { # <id>  — crée l'ombre si l'app système est installée
   _menu_write_shadow "$sys" "$local_f" "$MENU_MARK_CYBER" && log "menu : $id masqué."
 }
 menu_reveal_app() { # <id>  — retire notre ombre cyber
-  local id="$1" local_f="$MENU_APPS_DIR/$id.desktop"
+  local id="$1"; local local_f="$MENU_APPS_DIR/$id.desktop"
   [[ -f "$local_f" ]] && grep -qF "$MENU_MARK_CYBER" "$local_f" || return 0
   run rm -f "$local_f" && log "menu : $id révélé."
 }
@@ -221,7 +221,7 @@ _menu_is_kept() { # <id>
 
 # Masque une app au titre du focus (ombre si système, sinon édition locale).
 _menu_focus_hide_one() { # <id>
-  local id="$1" eff local_f="$MENU_APPS_DIR/$id.desktop"
+  local id="$1" eff; local local_f="$MENU_APPS_DIR/$id.desktop"
   eff=$(_menu_effective_path "$id"); [[ -n "$eff" ]] || return 0
   _menu_is_ours "$eff" && return 0                         # déjà masquée par nous
   grep -qE '^[[:space:]]*(NoDisplay|Hidden)[[:space:]]*=[[:space:]]*true' "$eff" && return 0  # déjà cachée

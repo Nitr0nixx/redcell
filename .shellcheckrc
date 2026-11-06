@@ -1,0 +1,8 @@
+# Configuration ShellCheck du projet.
+#
+# Les bibliothèques lib/*.sh sont TOUJOURS sourcées par bin/pentest APRÈS
+# lib/common.sh, qui définit la palette de couleurs _c_* et les compteurs.
+# Lintées isolément (shellcheck lib/*.sh), elles déclenchent donc de faux
+# SC2154 « _c_dim is referenced but not assigned ». On désactive ce seul
+# contrôle ; tous les autres (y compris les vrais défauts) restent actifs.
+disable=SC2154

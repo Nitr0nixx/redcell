@@ -2,6 +2,7 @@
 # lib/lab.sh — dossiers de lab, périmètre (scope) et journal.
 # Données dans ~/pentest/<lab> avec permissions restrictives (700).
 # Dépend de lib/common.sh.
+# shellcheck disable=SC1090  # meta.env sourcé dynamiquement (chemin voulu, variable)
 
 PENTEST_LAB_ROOT=$(cfg_get "lab_root" "$HOME/pentest")
 PENTEST_LAB_ROOT="${PENTEST_LAB_ROOT/#\~/$HOME}"   # développe un ~ en tête

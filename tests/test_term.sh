@@ -48,6 +48,7 @@ echo "[3] repli ultime 'foot' si AUCUN terminal présent"
 # émulateur n'est trouvable -> term_bin doit renvoyer 'foot'.
 OUT=$(
   source "$REPO/lib/common.sh"; source "$REPO/lib/term.sh"
+  # shellcheck disable=SC2123  # on vide PATH exprès pour tester le repli
   PATH=""; term_bin 2>/dev/null
 )
 check "term_bin renvoie foot par défaut"  bash -c '[ "$0" = "foot" ]' "$OUT"

@@ -434,7 +434,7 @@ recon_full() { # <lab> <target> [--yes]
   # structuré existe (nmap -oX + python3), on route par NOM de service — plus
   # fiable : un HTTP sur un port exotique est suivi, un 80 non-HTTP ne l'est pas.
   # Sinon, repli sur le numéro de port (comportement historique).
-  local svcfile="$(_recon_scans_dir "$lab")/services-latest.tsv"
+  local svcfile; svcfile="$(_recon_scans_dir "$lab")/services-latest.tsv"
   if [[ -s "$svcfile" ]]; then
     # Lu en mémoire d'abord : recon_web/_dns/_smb relancent nmap/curl, et garder
     # le descripteur du TSV ouvert pendant ces sous-scans est fragile.

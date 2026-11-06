@@ -32,6 +32,7 @@ for s in scope notes scans loot captures report; do
   check "sous-dossier $s"        test -d "$D/$s"
 done
 check "permissions 700 sur le lab" bash -c '[ "$(stat -c %a "'"$D"'")" = "700" ]'
+# shellcheck disable=SC2088  # libellé affiché, pas un chemin
 check "~/pentest en 700"           bash -c '[ "$(stat -c %a "'"$HOME"'/pentest")" = "700" ]'
 
 echo "[2] modèles instanciés"

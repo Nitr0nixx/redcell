@@ -108,7 +108,9 @@ killswitch_active() { [[ -f "$KILLSWITCH_FLAG" ]]; }
 vpn_up() { # <lab> [config.ovpn]
   local lab="$1" cfg="${2:-}"
   [[ -n "$cfg" ]] || cfg=$(vpn_config_path "$lab")
-  if ! command -v openvpn >/dev/null 2>&1; then
+  # En dry-run on SIMULE la commande même sans openvpn (tests portables / bac à
+  # sable) ; en vrai on exige le binaire.
+  if [[ "$PENTEST_DRY_RUN" != "1" ]] && ! command -v openvpn >/dev/null 2>&1; then
     warn "openvpn non installé (sudo pacman -S --needed openvpn) — VPN ignoré."; return 1
   fi
   if [[ ! -f "$cfg" ]]; then
@@ -164,8 +166,11 @@ vpn_wait_tun() { # [secondes]
 # demandes explicitement.
 vpn_connect() { # <lab>
   local lab="$1"
-  command -v openvpn >/dev/null 2>&1 || {
-    err "openvpn non installé. Installe-le : pentest install openvpn (ou sudo pacman -S --needed openvpn)"; return 1; }
+  # En dry-run, l'assistant montre ce qu'il ferait sans exiger openvpn (bac à
+  # sable / tests). En vrai, le binaire est requis.
+  if [[ "$PENTEST_DRY_RUN" != "1" ]] && ! command -v openvpn >/dev/null 2>&1; then
+    err "openvpn non installé. Installe-le : pentest install openvpn (ou sudo pacman -S --needed openvpn)"; return 1
+  fi
 
   local thm; thm=$(cfg_get "thm_access_url" "https://tryhackme.com/r/access")
   mapfile -t cfgs < <(vpn_find_configs "$lab")

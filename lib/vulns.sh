@@ -35,9 +35,9 @@ vuln_analyze() { # <lab>
   rf=$(vuln_rules_file)
   [[ -f "$rf" ]] || { warn "base de règles introuvable : $rf"; return 0; }
 
-  local port proto svc ver hay line r pat id sev title ref n=0
+  local port svc ver hay line r pat id sev title ref n=0
   local -a hits=()
-  while IFS=$'\t' read -r port proto svc ver; do
+  while IFS=$'\t' read -r port _ svc ver; do
     [[ -n "$port" ]] || continue
     hay="$svc $ver"
     while IFS= read -r line; do

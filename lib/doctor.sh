@@ -166,6 +166,7 @@ doctor_report() {
   local labroot="$HOME/pentest"
   if [[ -d "$labroot" ]]; then
     local perms; perms=$(stat -c '%a' "$labroot" 2>/dev/null || echo '?')
+    # shellcheck disable=SC2088  # "~/pentest" = texte affiché, pas un chemin à étendre
     if [[ "$perms" == "700" ]]; then d_line ok "~/pentest en 700 (privé)"
     else d_line warn "~/pentest en $perms" "attendu 700 : chmod 700 ~/pentest"; fi
   fi

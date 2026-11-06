@@ -37,7 +37,7 @@ _appids_file() { printf '%s' "$PENTEST_STATE_DIR/layout.appids"; }
 
 # Ouvre la disposition pour un lab donné.
 hypr_open_layout() {
-  local lab="$1" first_ws="" ws appid cmd line esc
+  local lab="$1" first_ws="" ws appid cmd esc
   if ! hypr_available; then
     warn "Hyprland indisponible (hyprctl) — disposition non ouverte."
     return 0
@@ -156,7 +156,7 @@ hypr_close_session_windows() {
   local clients caller addr cls n=0 left
   clients=$(hyprctl clients -j 2>/dev/null) || { rm -f "$f"; return 1; }
   caller=$(_caller_window "$clients")
-  while IFS=$'\t' read -r addr cls; do
+  while IFS=$'\t' read -r addr _; do
     [[ -n "$addr" ]] || continue
     grep -qxF "$addr" "$f" && continue                     # existait avant : on garde
     if [[ "$addr" == "$caller" ]]; then _HYPR_CALLER_TO_CLOSE="$addr"; continue; fi

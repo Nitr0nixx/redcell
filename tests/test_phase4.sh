@@ -14,6 +14,7 @@ mkdir -p "$XDG_STATE_HOME" "$XDG_CONFIG_HOME"
 pass=0; fail=0
 check() { local d="$1"; shift; if "$@"; then echo "  ✓ $d"; pass=$((pass+1)); else echo "  ✗ $d"; fail=$((fail+1)); fi; }
 
+# shellcheck disable=SC2034  # utilisé par les libs sourcées (net.sh, lab.sh)
 ROOT_DIR="$REPO"
 source "$REPO/lib/common.sh"
 source "$REPO/lib/net.sh"
@@ -43,6 +44,7 @@ echo "[3] résolution IPv4 : littéral renvoyé tel quel"
 check "IP littérale inchangée"   bash -c '[ "$(printf "%s" "'"$(resolve_ipv4 198.51.100.9)"'")" = "198.51.100.9" ]'
 
 echo "[4] chemin de config VPN par défaut"
+# shellcheck disable=SC2088  # libellé affiché, pas un chemin
 check "~/pentest/<lab>/vpn.ovpn"  grep -q "$HOME/pentest/demolab/vpn.ovpn" <<<"$(vpn_config_path demolab)"
 
 echo "[5] panic (dry-run) : supprime notre table, coupe le VPN, restaure"
