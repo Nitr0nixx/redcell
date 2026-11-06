@@ -172,9 +172,96 @@ report_build() { # <lab>
     if [[ -f "$dir/flags.md" ]] && grep -qE '^- ' "$dir/flags.md"; then grep -E '^- ' "$dir/flags.md"; else echo '_aucun_'; fi
     printf '\n## Notes\n\n'
     if [[ -f "$dir/notes/notes.md" ]]; then cat "$dir/notes/notes.md"; else echo '_aucune_'; fi
+    printf '\n## Captures\n\n'
+    # Images déposées dans captures/ : liens relatifs depuis report/writeup.md.
+    # À l'export HTML (--embed-resources), pandoc les intègre au fichier.
+    local caps; caps=$(find "$dir/captures" -maxdepth 1 -type f \
+        \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \
+        -o -iname '*.gif' -o -iname '*.webp' \) 2>/dev/null | sort || true)
+    if [[ -n "$caps" ]]; then
+      local cf cb
+      while IFS= read -r cf; do
+        cb=$(basename "$cf"); printf '![%s](../captures/%s)\n\n' "$cb" "$cb"
+      done <<<"$caps"
+    else
+      echo '_aucune capture (dépose des images dans `captures/`)_'
+    fi
     printf '\n## Journal de session\n\n```\n'
     [[ -f "$dir/journal.log" ]] && cat "$dir/journal.log" || echo '(vide)'
     printf '```\n'
   } > "$out"
   ok "writeup généré : $out"
+}
+
+# Feuille de style du writeup HTML (sobre, lisible clair/sombre, accents rouges
+# du thème pentest). Intégrée via pandoc -H ; aucune ressource externe.
+read -r -d '' REPORT_HTML_STYLE <<'CSS' || true
+<style>
+  :root { color-scheme: light dark; --fg:#1a1a1a; --bg:#fafafa; --muted:#666;
+          --accent:#c0392b; --code-bg:#eee; --border:#ddd; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e6e6e6; --bg:#16181d; --muted:#9aa0a6; --accent:#ff6b6b;
+            --code-bg:#23262d; --border:#30343c; } }
+  body { max-width:52rem; margin:2rem auto; padding:0 1rem;
+         font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+         color:var(--fg); background:var(--bg); }
+  h1,h2,h3 { line-height:1.25; }
+  h1 { color:var(--accent); border-bottom:2px solid var(--accent); padding-bottom:.3rem; }
+  h2 { margin-top:2rem; border-bottom:1px solid var(--border); padding-bottom:.2rem; }
+  a { color:var(--accent); }
+  code,pre { background:var(--code-bg); border-radius:6px; }
+  code { padding:.1rem .3rem; font-size:.9em; }
+  pre { padding:1rem; overflow:auto; border:1px solid var(--border); }
+  pre code { background:none; padding:0; }
+  blockquote { margin:0; padding:.2rem 1rem; border-left:3px solid var(--accent);
+               color:var(--muted); background:var(--code-bg); border-radius:0 6px 6px 0; }
+  img { max-width:100%; height:auto; border:1px solid var(--border); border-radius:6px; }
+  em { color:var(--muted); }
+</style>
+CSS
+
+# Exporte le writeup Markdown vers un autre format via pandoc.
+# report_export <lab> <html|pdf>. N'INSTALLE rien : si pandoc (ou un moteur PDF)
+# manque, on prévient avec la commande à lancer soi-même et on n'échoue pas.
+report_export() {
+  local lab="$1" fmt="$2" dir md out
+  dir=$(lab_dir "$lab"); md="$dir/report/writeup.md"; out="$dir/report/writeup.$fmt"
+  if [[ "$PENTEST_DRY_RUN" == "1" ]]; then
+    printf '%s[dry-run]%s exporterait %s via pandoc\n' "$_c_dim" "$_c_reset" "$out"; return 0
+  fi
+  if ! command -v pandoc >/dev/null 2>&1; then
+    warn "pandoc absent — export $fmt ignoré. Installe-le : pentest install pandoc (ou sudo pacman -S pandoc)."
+    return 0
+  fi
+  [[ -f "$md" ]] || { err "writeup.md introuvable — lance 'pentest report' d'abord."; return 1; }
+  local room title; room=$(meta_get "$lab" ROOM || true)
+  title="Writeup — ${room:-$lab}"
+
+  case "$fmt" in
+    html)
+      local hdr; hdr=$(mktemp)
+      printf '%s\n' "$REPORT_HTML_STYLE" > "$hdr"
+      # pandoc 3.x : --embed-resources ; 2.x : --self-contained (même effet).
+      local embed=--self-contained
+      pandoc --help 2>/dev/null | grep -q -- '--embed-resources' && embed=--embed-resources
+      if pandoc "$md" -o "$out" -f gfm -t html5 -s "$embed" \
+           --metadata title="$title" -H "$hdr" 2>/dev/null; then
+        ok "export HTML : $out"
+      else
+        warn "échec de l'export HTML (pandoc)."
+      fi
+      rm -f "$hdr"
+      ;;
+    pdf)
+      local engine=()
+      if command -v wkhtmltopdf >/dev/null 2>&1; then engine=(--pdf-engine=wkhtmltopdf)
+      elif command -v weasyprint >/dev/null 2>&1; then engine=(--pdf-engine=weasyprint); fi
+      if pandoc "$md" -o "$out" -f gfm --metadata title="$title" "${engine[@]}" 2>/dev/null; then
+        ok "export PDF : $out"
+      else
+        warn "échec de l'export PDF — un moteur PDF est requis (wkhtmltopdf, weasyprint ou LaTeX). Ex. : sudo pacman -S wkhtmltopdf."
+      fi
+      ;;
+    *) err "format d'export inconnu : $fmt"; return 2 ;;
+  esac
 }

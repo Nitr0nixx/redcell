@@ -146,9 +146,15 @@ pentest report                      # compile tout en report/writeup.md
   (pratique pour `LHOST` / reverse shells).
 - **`flag`** horodate chaque flag dans `flags.md` + le journal.
 - **`room`** renseigne nom + URL de la room (métadonnées du lab).
-- **`report`** génère `report/writeup.md` (contexte, scope, flags, notes,
-  journal) — **régénéré** à chaque appel ; ton `report/report.md` écrit à la
-  main n'est pas touché.
+- **`report`** génère `report/writeup.md` (contexte, scope, reco, flags, notes,
+  **captures**, journal) — **régénéré** à chaque appel ; ton `report/report.md`
+  écrit à la main n'est pas touché. Les images déposées dans `captures/` sont
+  reprises en section *Captures*.
+  - **Export** : `pentest report --html` / `--pdf` / `--all` rend aussi le
+    writeup via **pandoc** (HTML autonome, style sobre clair/sombre, images
+    **intégrées** au fichier ; PDF si un moteur est présent). Rien n'est
+    installé : si pandoc (ou un moteur PDF) manque, `report` le signale avec la
+    commande à lancer et **ne génère que le Markdown**, sans échouer.
 
 ## TryHackMe & connexion aux machines cibles
 

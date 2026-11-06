@@ -56,6 +56,30 @@ check "writeup : cible reprise"       grep -q "10.10.10.10" "$LABDIR/report/writ
 check "writeup : flag repris"         grep -q 'THM{s3cr3t}' "$LABDIR/report/writeup.md"
 check "writeup : URL de la room"      grep -q "tryhackme.com/room/blue" "$LABDIR/report/writeup.md"
 
+echo "[5b] writeup : section Captures (images de captures/ intégrées)"
+mkdir -p "$LABDIR/captures"
+printf 'fakepng' > "$LABDIR/captures/shot1.png"
+"$PENTEST" report >/dev/null 2>&1
+check "section Captures présente"     grep -q "## Captures" "$LABDIR/report/writeup.md"
+check "image liée en relatif"         grep -q '](../captures/shot1.png)' "$LABDIR/report/writeup.md"
+rm -f "$LABDIR/captures/shot1.png"
+"$PENTEST" report >/dev/null 2>&1
+check "sans capture : mention vide"   grep -q "aucune capture" "$LABDIR/report/writeup.md"
+
+echo "[5c] export : flags + dégradation si pandoc absent"
+check "flag inconnu rejeté (exit 2)"  bash -c '"'"$PENTEST"'" report --wat >/dev/null 2>&1; [ $? -eq 2 ]'
+O=$(PENTEST_DRY_RUN=1 "$PENTEST" report --all 2>&1)
+check "dry-run : exporterait HTML"    grep -q "exporterait .*writeup.html" <<<"$O"
+check "dry-run : exporterait PDF"     grep -q "exporterait .*writeup.pdf" <<<"$O"
+if command -v pandoc >/dev/null 2>&1; then
+  O=$("$PENTEST" report --html 2>&1)
+  check "pandoc présent : HTML généré" bash -c 'grep -q "export HTML" <<<"$0" && test -f "'"$LABDIR"'/report/writeup.html"' "$O"
+else
+  O=$("$PENTEST" report --html 2>&1)
+  check "pandoc absent : prévient, pas d'échec" grep -q "pandoc absent" <<<"$O"
+  check "pandoc absent : report sort en succès"  bash -c '"'"$PENTEST"'" report --html >/dev/null 2>&1'
+fi
+
 echo "[6] ip + aide + hors lab"
 check "ip ne plante pas (commande connue)" bash -c '"'"$PENTEST"'" ip 2>&1 | grep -qv "commande inconnue"'
 for c in target ip flag room report; do

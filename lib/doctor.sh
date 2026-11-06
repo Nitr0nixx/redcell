@@ -107,7 +107,7 @@ doctor_report() {
     if [[ -z "$missing" ]]; then
       d_line ok "tous les outils de tools.list présents"
     else
-      d_line warn "$total outil(s) de reco absent(s)" "détail : pentest tools ; install : pentest install"
+      d_line warn "$total outil(s) de tools.list absent(s)" "détail : pentest tools ; install : pentest install"
     fi
   else
     d_line warn "liste d'outils introuvable" "config/tools.list"

@@ -52,3 +52,7 @@ zaproxy|zaproxy|pacman
 #: Isolation par conteneur (optionnel)
 podman|podman|pacman
 distrobox|distrobox|pacman
+
+#: Rapport / writeup (export pandoc)
+pandoc|pandoc|pacman
+wkhtmltopdf|wkhtmltopdf|aur
