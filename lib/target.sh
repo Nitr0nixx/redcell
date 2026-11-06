@@ -248,6 +248,7 @@ report_export() {
       local embed=--self-contained
       pandoc --help 2>/dev/null | grep -q -- '--embed-resources' && embed=--embed-resources
       if pandoc "$md" -o "$out" -f gfm -t html5 -s "$embed" \
+           --resource-path "$dir/report" \
            --metadata title="$title" -H "$hdr" 2>/dev/null; then
         ok "export HTML : $out"
       else
@@ -259,7 +260,8 @@ report_export() {
       local engine=()
       if command -v wkhtmltopdf >/dev/null 2>&1; then engine=(--pdf-engine=wkhtmltopdf)
       elif command -v weasyprint >/dev/null 2>&1; then engine=(--pdf-engine=weasyprint); fi
-      if pandoc "$md" -o "$out" -f gfm --metadata title="$title" "${engine[@]}" 2>/dev/null; then
+      if pandoc "$md" -o "$out" -f gfm --resource-path "$dir/report" \
+           --metadata title="$title" "${engine[@]}" 2>/dev/null; then
         ok "export PDF : $out"
       else
         warn "échec de l'export PDF — un moteur PDF est requis (wkhtmltopdf, weasyprint ou LaTeX). Ex. : sudo pacman -S wkhtmltopdf."

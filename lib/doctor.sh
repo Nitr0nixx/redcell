@@ -97,6 +97,7 @@ doctor_report() {
   fi
   d_cmd tmux    warn "session persistante du lab"
   d_cmd firefox warn "navigateur isolé du lab"
+  d_cmd jq      warn "idempotence de la disposition (détection des fenêtres déjà ouvertes)"
 
   # --- Réseau (VPN / kill switch) ------------------------------------------
   d_head "Réseau"

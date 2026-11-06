@@ -23,10 +23,19 @@ box_exists() { # <nom>
 }
 
 # Le runner conteneur est-il demandé ET prêt ? (recon_runner=box + boîte dispo.)
+# Mémoïsé : recon_exec_prefix/recon_need l'appellent une fois PAR sonde, et
+# box_exists lance `distrobox list` à chaque fois. L'état ne change pas au cours
+# d'un `pentest recon`, donc on met en cache (0=prêt, 1=non) pour ce processus.
+_BOX_READY_CACHE=""
 box_runner_ready() {
-  [[ "$(cfg_get recon_runner host)" == "box" ]] || return 1
-  box_available || return 1
-  box_exists "$(box_name)"
+  if [[ -z "$_BOX_READY_CACHE" ]]; then
+    if [[ "$(cfg_get recon_runner host)" == "box" ]] && box_available && box_exists "$(box_name)"; then
+      _BOX_READY_CACHE=ready
+    else
+      _BOX_READY_CACHE=no
+    fi
+  fi
+  [[ "$_BOX_READY_CACHE" == "ready" ]]
 }
 
 # Préfixe d'exécution des sondes : vide (hôte) ou « distrobox enter <nom> -- ».

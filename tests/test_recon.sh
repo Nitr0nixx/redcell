@@ -181,6 +181,44 @@ check "audit : cible tracée"          grep -q "cible=10.10.10.10" "$LABDIR/audi
 "$PENTEST" report >/dev/null 2>&1
 check "writeup reprend le tableau"    grep -q "| 22 | tcp | ssh |" "$LABDIR/report/writeup.md"
 
+echo "[11d] rescan sans port ouvert : services-latest.tsv purgé (pas de résidu)"
+# Après [11c], services-latest.tsv est non vide. Un nmap qui ne trouve plus de
+# port ouvert doit l'effacer, sinon vuln_analyze re-signalerait des services
+# qui ne tournent plus. Stub nmap « aucun port ouvert ».
+test -s "$LABDIR/scans/services-latest.tsv"   # pré-condition (sinon test invalide)
+cat > "$TMP/bin/nmap" <<'STUB'
+#!/usr/bin/env bash
+out=""; mode=""; a=("$@")
+for ((i=0;i<${#a[@]};i++)); do
+  [[ "${a[i]}" == "-oG" ]] && { mode=g; out="${a[i+1]}"; }
+  [[ "${a[i]}" == "-oX" ]] && { mode=x; out="${a[i+1]}"; }
+done
+if [[ "$mode" == g ]]; then
+  printf 'Host: T ()\tStatus: Up\n' > "$out"
+elif [[ "$mode" == x ]]; then
+  printf '<?xml version="1.0"?>\n<nmaprun><host><ports></ports></host></nmaprun>\n' > "$out"
+fi
+exit 0
+STUB
+chmod +x "$TMP/bin/nmap"
+PATH="$TMP/bin:$PATH" "$PENTEST" recon ports 10.10.10.10 >/dev/null 2>&1
+check "services-latest.tsv vidé"      bash -c '[[ ! -s "'"$LABDIR"'/scans/services-latest.tsv" ]]'
+
+echo "[11e] recon_web honore un schéma explicite sur un port non standard"
+O=$(PENTEST_DRY_RUN=1 bash -c '
+  source "'"$REPO"'/lib/common.sh"
+  source "'"$REPO"'/lib/lab.sh"; source "'"$REPO"'/lib/net.sh"; source "'"$REPO"'/lib/target.sh"
+  source "'"$REPO"'/lib/recon.sh"
+  recon_web thm 10.10.10.10 8080 https' 2>&1)
+check "schéma explicite https respecté"  grep -q "https://10.10.10.10:8080/" <<<"$O"
+check "pas de http:// trompeur"          bash -c '! grep -q "http://10.10.10.10:8080/" <<<"$0"' "$O"
+O=$(PENTEST_DRY_RUN=1 bash -c '
+  source "'"$REPO"'/lib/common.sh"
+  source "'"$REPO"'/lib/lab.sh"; source "'"$REPO"'/lib/net.sh"; source "'"$REPO"'/lib/target.sh"
+  source "'"$REPO"'/lib/recon.sh"
+  recon_web thm 10.10.10.10 8080' 2>&1)
+check "sans schéma : http déduit du port" grep -q "http://10.10.10.10:8080/" <<<"$O"
+
 echo "[12] help : recon documenté"
 check "recon dans l'aide"              bash -c '"'"$PENTEST"'" help 2>&1 | grep -q "pentest recon"'
 

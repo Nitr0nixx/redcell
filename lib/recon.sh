@@ -38,6 +38,30 @@ _recon_ip2int() { # <a.b.c.d>
   printf '%d' "$(( (o1<<24) + (o2<<16) + (o3<<8) + o4 ))"
 }
 
+# Vrai (0) si <target> est la cible définie du lab (TARGET_IP/NAME/HOST).
+# Facteur commun à recon_in_scope et scope_valid_cover.
+_scope_meta_matches() { # <lab> <target>
+  local lab="$1" target="$2" tip tname thost
+  tip=$(meta_get "$lab" TARGET_IP   2>/dev/null || true)
+  tname=$(meta_get "$lab" TARGET_NAME 2>/dev/null || true)
+  thost=$(meta_get "$lab" TARGET_HOST 2>/dev/null || true)
+  [[ -n "$tip"   && "$target" == "$tip"   ]] && return 0
+  [[ -n "$tname" && "$target" == "$tname" ]] && return 0
+  [[ -n "$thost" && "$target" == "$thost" ]] && return 0
+  return 1
+}
+
+# Vrai (0) si <target> correspond à une spécification de scope <spec> : égalité
+# exacte, ou appartenance à un CIDR. <spec> est déjà réduit au 1er champ.
+_scope_spec_matches() { # <target> <spec>
+  local target="$1" spec="$2"
+  [[ "$target" == "$spec" ]] && return 0
+  if [[ "$spec" == */* ]] && _recon_is_ipv4 "$target"; then
+    _recon_ip_in_cidr "$target" "$spec" && return 0
+  fi
+  return 1
+}
+
 # Vrai (0) si <target> est couvert par le périmètre du lab <lab>.
 # Autorisé si : égal à une entrée du scope ; dans un CIDR du scope ;
 # égal à la cible définie (TARGET_IP / TARGET_NAME / TARGET_HOST).
@@ -45,24 +69,14 @@ recon_in_scope() { # <lab> <target>
   local lab="$1" target="$2" entry
   [[ -n "$target" ]] || return 1
 
-  # Cible définie dans les métadonnées du lab.
-  local tip tname thost
-  tip=$(meta_get "$lab" TARGET_IP   2>/dev/null || true)
-  tname=$(meta_get "$lab" TARGET_NAME 2>/dev/null || true)
-  thost=$(meta_get "$lab" TARGET_HOST 2>/dev/null || true)
-  [[ -n "$tip"   && "$target" == "$tip"   ]] && return 0
-  [[ -n "$tname" && "$target" == "$tname" ]] && return 0
-  [[ -n "$thost" && "$target" == "$thost" ]] && return 0
+  _scope_meta_matches "$lab" "$target" && return 0
 
   # Entrées explicites du scope (IP, hostname, ou CIDR).
   while IFS= read -r entry; do
     [[ -z "$entry" ]] && continue
     # On ne garde que le 1er champ (au cas où la ligne ait un commentaire).
     entry=${entry%%[[:space:]]*}
-    [[ "$target" == "$entry" ]] && return 0
-    if [[ "$entry" == */* ]] && _recon_is_ipv4 "$target"; then
-      _recon_ip_in_cidr "$target" "$entry" && return 0
-    fi
+    _scope_spec_matches "$target" "$entry" && return 0
   done < <(lab_scope_targets "$lab")
 
   return 1
@@ -82,24 +96,13 @@ _scope_entry_expiry() { # <ligne>
 # expirée), ou par la cible définie du lab (jamais d'échéance). Une échéance
 # illisible est considérée valide (fail-open ; signalée par ailleurs).
 scope_valid_cover() { # <lab> <target>
-  local lab="$1" target="$2" entry spec exp now exp_epoch match
+  local lab="$1" target="$2" entry spec exp now exp_epoch
   now=$(date +%s)
-  local tip tname thost
-  tip=$(meta_get "$lab" TARGET_IP   2>/dev/null || true)
-  tname=$(meta_get "$lab" TARGET_NAME 2>/dev/null || true)
-  thost=$(meta_get "$lab" TARGET_HOST 2>/dev/null || true)
-  [[ -n "$tip"   && "$target" == "$tip"   ]] && return 0
-  [[ -n "$tname" && "$target" == "$tname" ]] && return 0
-  [[ -n "$thost" && "$target" == "$thost" ]] && return 0
+  _scope_meta_matches "$lab" "$target" && return 0   # cible définie = jamais d'échéance
   while IFS= read -r entry; do
     [[ -z "$entry" ]] && continue
     spec=${entry%%[[:space:]]*}
-    match=0
-    [[ "$target" == "$spec" ]] && match=1
-    if [[ $match -eq 0 && "$spec" == */* ]] && _recon_is_ipv4 "$target"; then
-      _recon_ip_in_cidr "$target" "$spec" && match=1
-    fi
-    [[ $match -eq 1 ]] || continue
+    _scope_spec_matches "$target" "$spec" || continue
     exp=$(_scope_entry_expiry "$entry")
     [[ -z "$exp" ]] && return 0                       # pas d'échéance = valide
     exp_epoch=$(date -d "$exp" +%s 2>/dev/null || echo 0)
@@ -336,6 +339,9 @@ recon_ports() { # <lab> <target>  → imprime la liste des ports ouverts
     fi
   elif [[ "$PENTEST_DRY_RUN" != "1" ]]; then
     warn "aucun port ouvert détecté dans le top-$topn." >&2
+    # Efface le TSV d'une reco précédente : sinon recon_full re-sonderait et
+    # vuln_analyze re-signalerait des services qui ne sont plus ouverts.
+    : > "$dir/services-latest.tsv"
     _recon_summary "$lab" "## $ts — $t"
     _recon_summary "$lab" "- Aucun port ouvert dans le top-$topn."
   fi
@@ -345,10 +351,14 @@ recon_ports() { # <lab> <target>  → imprime la liste des ports ouverts
 }
 
 # Web : empreinte (whatweb / en-têtes) + découverte de contenu LÉGÈRE.
-recon_web() { # <lab> <target> <port>
-  local lab="$1" t="$2" port="$3" dir ts scheme url
+recon_web() { # <lab> <target> <port> [scheme]
+  local lab="$1" t="$2" port="$3" scheme="${4:-}" dir ts url
   dir=$(_recon_scans_dir "$lab"); ts=$(_recon_ts)
-  scheme=http; [[ "$port" == "443" || "$port" == "8443" ]] && scheme=https
+  # Schéma explicite prioritaire (routage par nom de service nmap) ; sinon
+  # on devine d'après le port pour le repli historique par numéro de port.
+  if [[ -z "$scheme" ]]; then
+    scheme=http; [[ "$port" == "443" || "$port" == "8443" ]] && scheme=https
+  fi
   url="$scheme://$t:$port/"
 
   log "web : $url"
@@ -426,15 +436,20 @@ recon_full() { # <lab> <target> [--yes]
   # Sinon, repli sur le numéro de port (comportement historique).
   local svcfile="$(_recon_scans_dir "$lab")/services-latest.tsv"
   if [[ -s "$svcfile" ]]; then
-    local pn pr sv vr
-    while IFS=$'\t' read -r pn pr sv vr; do
+    # Lu en mémoire d'abord : recon_web/_dns/_smb relancent nmap/curl, et garder
+    # le descripteur du TSV ouvert pendant ces sous-scans est fragile.
+    local -a svclines=(); local line pn pr sv vr
+    mapfile -t svclines < "$svcfile"
+    for line in "${svclines[@]}"; do
+      IFS=$'\t' read -r pn pr sv vr <<<"$line"
       [[ -n "$pn" ]] || continue
       case "$sv" in
-        http|http-alt|http-proxy|https|https-alt|ssl/http|ssl|ssl/https|sip) recon_web "$lab" "$t" "$pn" ;;
+        http|http-alt|http-proxy)   recon_web "$lab" "$t" "$pn" http ;;
+        https|https-alt|ssl/http|ssl/https) recon_web "$lab" "$t" "$pn" https ;;
         domain)                   recon_dns "$lab" "$t" ;;
         microsoft-ds|netbios-ssn) recon_smb "$lab" "$t" ;;
       esac
-    done < "$svcfile"
+    done
   elif [[ -n "$ports" ]]; then
     local IFS=,; local p
     for p in $ports; do
