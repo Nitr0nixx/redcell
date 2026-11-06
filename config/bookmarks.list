@@ -1,0 +1,42 @@
+# bookmarks.list — favoris cyber injectés dans le Firefox isolé du mode pentest.
+#
+# Semés UNE FOIS à la création du profil (barre de favoris, dossier « Pentest »).
+# Format : « dossier | titre | url » (une entrée par ligne). Garde les entrées
+# d'un même dossier GROUPÉES (consécutives). « # » = commentaire. Édite/complète
+# librement : relance avec un profil neuf pour re-semer (pentest open browser).
+#
+# Rappel : ce sont des RÉFÉRENCES. N'agis que dans ton périmètre autorisé.
+
+# --- Antisèches / payloads ---
+Antisèches | GTFOBins (Unix living-off-the-land) | https://gtfobins.github.io/
+Antisèches | LOLBAS (Windows living-off-the-land) | https://lolbas-project.github.io/
+Antisèches | PayloadsAllTheThings | https://github.com/swisskyrepo/PayloadsAllTheThings
+Antisèches | PentestMonkey — reverse shell cheat sheet | https://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet
+Antisèches | HackTricks | https://book.hacktricks.xyz/
+Antisèches | Reverse Shell Generator (revshells) | https://www.revshells.com/
+Antisèches | PEASS-ng (linpeas / winpeas) | https://github.com/carlospolop/PEASS-ng
+
+# --- Outils en ligne ---
+Outils | CyberChef | https://gchq.github.io/CyberChef/
+Outils | CrackStation (hashes) | https://crackstation.net/
+Outils | regex101 | https://regex101.com/
+Outils | JWT.io | https://jwt.io/
+Outils | ExplainShell | https://explainshell.com/
+Outils | dcode.fr (chiffres / cryptanalyse) | https://www.dcode.fr/en
+
+# --- CVE / vulnérabilités ---
+Vulnérabilités | NVD (NIST) | https://nvd.nist.gov/
+Vulnérabilités | Exploit-DB | https://www.exploit-db.com/
+Vulnérabilités | CVE (MITRE) | https://cve.mitre.org/
+Vulnérabilités | Calculateur CVSS 3.1 | https://www.first.org/cvss/calculator/3.1
+
+# --- Web / OWASP ---
+Web | OWASP Top Ten | https://owasp.org/www-project-top-ten/
+Web | OWASP Testing Guide (WSTG) | https://owasp.org/www-project-web-security-testing-guide/
+Web | HackTricks — pentesting web | https://book.hacktricks.xyz/network-services-pentesting/pentesting-web
+Web | SecLists (wordlists) | https://github.com/danielmiessler/SecLists
+
+# --- Plateformes de labs (autorisés) ---
+Labs | TryHackMe | https://tryhackme.com/
+Labs | Hack The Box | https://www.hackthebox.com/
+Labs | PortSwigger Web Security Academy | https://portswigger.net/web-security

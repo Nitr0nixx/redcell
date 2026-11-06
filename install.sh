@@ -108,6 +108,7 @@ install_mode() {
   copy_if_absent "$ROOT_DIR/config/menu-apps.list"            "$CONFIG_DIR/menu-apps.list"
   copy_if_absent "$ROOT_DIR/config/menu-keep.list"            "$CONFIG_DIR/menu-keep.list"
   copy_if_absent "$ROOT_DIR/config/vuln-rules.txt"            "$CONFIG_DIR/vuln-rules.txt"
+  copy_if_absent "$ROOT_DIR/config/bookmarks.list"            "$CONFIG_DIR/bookmarks.list"
   # Modèles de lab personnalisables (sinon ceux du projet sont utilisés).
   mkdir -p "$CONFIG_DIR/templates"
   for t in scope notes report; do

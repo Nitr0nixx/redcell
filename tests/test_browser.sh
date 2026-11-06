@@ -36,4 +36,24 @@ check "restauration à la relance"  grep -q 'resume_session_once", true' "$PROF/
 printf 'browser_cookie_reject = "off"\n' >> "$XDG_CONFIG_HOME/mode-pentest/config.toml"
 "$BROWSER" r1 >/dev/null 2>&1
 check "désactivable (xpi retiré)"  bash -c '! test -f "$1/extensions/gdpr@cavi.au.dk.xpi"' _ "$PROF"
+
+echo "== Favoris cyber =="
+rm -rf "$PROF"   # profil neuf
+printf 'lab_root = "%s"\nbrowser_bookmarks = "on"\n' "$TMP/labs" > "$XDG_CONFIG_HOME/mode-pentest/config.toml"
+"$BROWSER" r1 >/dev/null 2>&1
+check "bookmarks.html créé"            test -f "$PROF/bookmarks.html"
+check "dossier barre « Pentest »"      grep -q 'PERSONAL_TOOLBAR_FOLDER="true">Pentest' "$PROF/bookmarks.html"
+check "CyberChef présent"              grep -q 'gchq.github.io/CyberChef' "$PROF/bookmarks.html"
+check "GTFOBins présent"               grep -q 'gtfobins.github.io' "$PROF/bookmarks.html"
+check "PentestMonkey présent"          grep -q 'pentestmonkey.net' "$PROF/bookmarks.html"
+check "import unique demandé (1er run)" grep -q 'importBookmarksHTML", true' "$PROF/user.js"
+check "barre de favoris visible"       grep -q 'toolbars.bookmarks.visibility' "$PROF/user.js"
+: > "$PROF/places.sqlite"   # simule un profil déjà initialisé
+"$BROWSER" r1 >/dev/null 2>&1
+check "pas de ré-import au 2e lancement" bash -c '! grep -q importBookmarksHTML "$1/user.js"' _ "$PROF"
+rm -rf "$PROF"
+printf 'lab_root = "%s"\nbrowser_bookmarks = "off"\n' "$TMP/labs" > "$XDG_CONFIG_HOME/mode-pentest/config.toml"
+"$BROWSER" r1 >/dev/null 2>&1
+check "off : aucun favori semé"        bash -c '! test -f "$1/bookmarks.html" && ! grep -q importBookmarksHTML "$1/user.js"' _ "$PROF"
+
 echo; echo "Résultat : $pass réussis, $fail échoués"; [ "$fail" -eq 0 ]

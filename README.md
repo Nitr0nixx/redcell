@@ -392,6 +392,15 @@ ajoutée alors que le navigateur est ouvert, `pentest` propose de le relancer
 en restaurant les onglets (`pentest open browser-restart`). Désactivable :
 `browser_cookie_reject = "off"`. Voir les hôtes exclus : `pentest scope hosts`.
 
+**Favoris cyber** : à la création du profil, une **barre de favoris** (dossier
+« Pentest ») est pré-remplie de références utiles — **CyberChef**, **GTFOBins**,
+**LOLBAS**, **PayloadsAllTheThings**, **PentestMonkey** (reverse shells),
+**HackTricks**, **revshells**, **CrackStation**, **regex101**, **JWT.io**,
+**NVD/Exploit-DB/MITRE**, **OWASP Top Ten/WSTG**, **TryHackMe/HTB/PortSwigger
+Academy**… Semés **une seule fois** (pas de doublons aux lancements suivants),
+depuis une liste **éditable** `~/.config/mode-pentest/bookmarks.list` (format
+`dossier | titre | url`). Désactivable : `browser_bookmarks = "off"`.
+
 `pentest off` ferme **toutes les fenêtres ouvertes pendant le mode** : à
 l'activation, les fenêtres existantes sont mémorisées (adresses Hyprland) et ne
 sont jamais touchées ; tout ce qui est né ensuite est fermé en douceur (comme
@@ -428,6 +437,7 @@ sauvegarde ; `--no-bar` saute cette étape, `--uninstall` le retire.
 | `menu_focus` | `on` = masque aussi les apps hors liste blanche pendant le mode | `on` |
 | `terminal` | terminal des fenêtres du mode (foot/kitty/alacritty/ghostty/wezterm) | `foot` |
 | `browser_home` | page d'accueil du navigateur isolé | `https://tryhackme.com` |
+| `browser_bookmarks` | `on` = favoris cyber dans la barre du navigateur isolé | `on` |
 | `vpn_dir` | dossier supplémentaire où chercher les `.ovpn` | `~/Downloads` |
 | `vpn_picker_on_start` | `on` = ouvre l'assistant VPN à l'activation | `on` |
 | `manage_hosts` | `on` = `pentest target <ip> <nom>` gère une entrée `/etc/hosts` | `on` |
