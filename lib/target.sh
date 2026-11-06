@@ -162,6 +162,12 @@ report_build() { # <lab>
     printf -- '- **Dossier** : `%s`\n\n' "$dir"
     printf '## Périmètre autorisé\n\n'
     if [[ -f "$dir/scope/scope.md" ]]; then sed 's/^/> /' "$dir/scope/scope.md"; else echo '_non défini_'; fi
+    printf '\n## Reconnaissance\n\n'
+    if [[ -f "$dir/scans/summary.md" ]]; then
+      sed '1d' "$dir/scans/summary.md"   # retire le titre « # Reconnaissance — <lab> »
+    else
+      echo '_aucune reconnaissance enregistrée (`pentest recon <cible>`)_'
+    fi
     printf '\n## Flags\n\n'
     if [[ -f "$dir/flags.md" ]] && grep -qE '^- ' "$dir/flags.md"; then grep -E '^- ' "$dir/flags.md"; else echo '_aucun_'; fi
     printf '\n## Notes\n\n'

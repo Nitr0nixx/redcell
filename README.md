@@ -180,6 +180,50 @@ seul si tu n'es pas déjà connecté (désactivable avec `vpn_picker_on_start`).
 > Rappel scope : ne te connecte et ne teste que des machines que tu es
 > **autorisé** à tester (une room TryHackMe active, un lab à toi…).
 
+## Reconnaissance de base (phase 6)
+
+Une fois le VPN monté et la cible définie, `pentest recon` enchaîne les
+opérations de reconnaissance classiques — **strictement limitées au périmètre
+du lab**. Avant toute sonde, trois conditions sont vérifiées, sinon la commande
+**refuse** :
+
+1. la cible est dans le **scope** du lab (`scope/scope.md` ou cible définie) —
+   une IP, un nom d'hôte ou un CIDR ; une IP hors scope est rejetée ;
+2. un **tunnel VPN** est actif (la reco passe par le VPN du lab, jamais ton IP
+   réelle) — désactivable pour un lab local via `recon_require_vpn = "off"` ;
+3. tu **confirmes** le scan actif (sautable avec `--yes` ou `recon_confirm = "off"`).
+
+```bash
+pentest recon                 # chaîne complète sur la cible définie (TARGET_IP)
+pentest recon 10.10.123.45    # idem, cible explicite (doit être dans le scope)
+pentest recon ports <cible>   # seulement : nmap ports + services/versions
+pentest recon web <cible> 80  # seulement : empreinte + découverte de contenu web
+pentest recon show            # résumé des reco du lab
+```
+
+L'enchaînement (niveau *énumération + découverte web légère*) :
+
+1. **liveness** — un ping ICMP (informatif ; on scanne même si la cible filtre) ;
+2. **ports** — `nmap` en *connect scan* (pas besoin de root), top‑1000 ports en
+   `-T3`, puis détection de **services/versions** (`-sV -sC`) sur les ports ouverts ;
+3. **suivi par service détecté**, et seulement eux : HTTP → `whatweb` + découverte
+   de contenu légère (`gobuster`/`ffuf`, petite wordlist fournie, débit limité) ;
+   DNS → `dnsrecon` ; SMB → `smbclient -L` (listing anonyme).
+
+**Aucun** brute‑force, **aucun** exploit, **aucun** scan de vulnérabilités lourd :
+c'est la phase de reconnaissance, pas d'attaque. Chaque sortie est archivée
+horodatée dans `~/pentest/<lab>/scans/`, résumée dans `scans/summary.md`, et
+reprise automatiquement par `pentest report` (section *Reconnaissance* du writeup).
+
+Les outils manquants ne sont **jamais** installés automatiquement : la commande
+indique `pentest install nmap` (etc.). Clés de config : `recon_require_vpn`,
+`recon_confirm`, `recon_timing`, `recon_top_ports`, `recon_web_discovery`,
+`recon_web_wordlist`.
+
+> Rappel scope : `recon` est volontairement incapable de sonder une cible hors
+> du périmètre que tu as déclaré. C'est le garde‑fou qui en fait un outil de
+> labs **autorisés**, pas un scanner généraliste.
+
 ## Limites connues
 
 - **VPN non testé bout-en-bout** faute de `.ovpn` réel ; le reste du réseau
