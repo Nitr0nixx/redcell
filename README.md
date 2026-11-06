@@ -35,7 +35,7 @@ lisible et documenté.
 
 ```bash
 pentest on <nom-du-lab>     # ambiance + workspaces + dossier du lab ; mode actif
-pentest off                 # restaure l'état d'avant, ferme nos fenêtres
+pentest off                 # restaure l'état d'avant, ferme les fenêtres du mode
 pentest status              # mode, lab, thème, notifications, dossier, cible/scope
 pentest scope               # affiche le périmètre autorisé du lab actif
 pentest scope edit          # édite scope.md dans $EDITOR
@@ -74,8 +74,9 @@ toi-même :
 
 ### Interface d'installation : `pentest install`
 
-Menu **TUI (gum)** pour installer facilement les outils cyber manquants :
-coche ceux voulus (espace), confirme, c'est installé. Chaque outil connaît son
+Menu **TUI (fzf)** pour installer facilement les outils cyber manquants :
+coche ceux voulus (**Espace**, `Ctrl+A` = tout), Entrée, confirme, c'est installé.
+(Repli sur gum si fzf est absent — gum 2.x coche avec **Tab**/`x`, pas Espace.) Chaque outil connaît son
 **paquet** et sa **source** (dépôts officiels via `pacman`, ou AUR via `yay`) —
 noms vérifiés, définis dans `tools.list`. Rien n'est installé sans confirmation.
 
@@ -164,8 +165,10 @@ L'assistant :
 2. s'il n'en trouve pas, explique où le récupérer (page *Access* de TryHackMe)
    et propose d'ouvrir cette page dans le navigateur isolé ;
 3. monte le tunnel OpenVPN avec la config choisie et **affiche l'IP du tunnel** ;
-4. propose d'**enregistrer la machine cible dans le scope** et, si tu le demandes,
-   un simple test de connectivité (**un seul ping** — aucun scan).
+4. propose d'**enregistrer la machine cible dans le scope** (son IP), puis le
+   **nom de la room** : il est enregistré (`pentest room`) et sert de nom DNS
+   local `<room>.thm` dans `/etc/hosts` (confirmé, retiré à `pentest off`) ;
+5. si tu le demandes, un simple test de connectivité (**un seul ping** — aucun scan).
 
 Mise en place THM : connecte-toi sur TryHackMe → *Access* → télécharge ton
 `.ovpn` → il est détecté depuis `~/Downloads` (ou dépose-le dans
@@ -255,8 +258,12 @@ Par défaut :
   comptes perso, télémétrie/sync coupées, proxy local Burp/ZAP pré-réglé mais
   **désactivé** par défaut — voir `bin/pentest-browser`).
 
-`pentest off` ferme **uniquement nos fenêtres** (repérées par leur app-id) ;
-tmux survit donc aucun travail n'est perdu. Désactivable via `close_layout`.
+`pentest off` ferme **toutes les fenêtres ouvertes pendant le mode** : à
+l'activation, les fenêtres existantes sont mémorisées (adresses Hyprland) et ne
+sont jamais touchées ; tout ce qui est né ensuite est fermé en douceur (comme
+`SUPER+W`). Le terminal d'où l'on tape `pentest off` est fermé en dernier, après
+la restauration. tmux survit donc aucun travail terminal n'est perdu.
+`close_all_windows = "off"` → seulement nos fenêtres (app-id, `close_layout`).
 
 **Indicateur de barre** : plugin Quickshell `theo.pentest` (une pastille rouge
 « PENTEST · \<lab\> » visible quand le mode est actif, tooltip avec lab/VPN/DND).

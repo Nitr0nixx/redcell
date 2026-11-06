@@ -67,12 +67,21 @@ tools_install() {
   if [[ ${#wanted[@]} -eq 0 ]]; then
     local missing; missing=$(tools_missing)
     [[ -n "$missing" ]] || { ok "tous les outils de la liste sont déjà installés."; return 0; }
-    if ! command -v gum >/dev/null 2>&1; then
-      err "gum introuvable pour le menu. Donne les outils en argument : pentest install nmap ffuf"
+    # fzf en priorité : Espace y est lié à « cocher ». (gum 2.x ne coche plus
+    # avec Espace — seulement Tab/x — d'où le bug signalé.)
+    if command -v fzf >/dev/null 2>&1; then
+      mapfile -t wanted < <(printf '%s\n' "$missing" | fzf --multi --layout=reverse \
+        --height=~60% --border --marker='✓ ' --prompt='filtrer > ' \
+        --bind 'space:toggle+down,ctrl-a:toggle-all' \
+        --header $'Espace = cocher · Ctrl+A = tout · Entrée = valider · Échap = annuler\n(sans coche, Entrée prend la ligne surlignée)' \
+        || true)
+    elif command -v gum >/dev/null 2>&1; then
+      mapfile -t wanted < <(printf '%s\n' "$missing" | gum choose --no-limit \
+        --header "Tab ou x = cocher · Entrée = valider · Ctrl+C = annuler" || true)
+    else
+      err "ni fzf ni gum pour le menu. Donne les outils en argument : pentest install nmap ffuf"
       printf 'Manquants :\n%s\n' "$missing"; return 1
     fi
-    mapfile -t wanted < <(printf '%s\n' "$missing" | gum choose --no-limit \
-      --header "Espace = cocher · Entrée = valider · Ctrl+C = annuler")
     [[ ${#wanted[@]} -gt 0 ]] || { log "aucun outil sélectionné."; return 0; }
   fi
 

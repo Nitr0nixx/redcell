@@ -34,11 +34,22 @@ line=$("$PENTEST" bar)
 check "ligne commence par ACTIVE"    bash -c 'printf "%s" "'"$line"'" | grep -q "^ACTIVE"'
 check "contient le lab demo"         bash -c 'printf "%s" "'"$line"'" | grep -q "demo"'
 
-echo "[4] fermeture ciblée (dry-run)"
+echo "[4] fermeture de TOUTES les fenêtres du mode (défaut, dry-run)"
+SNAP="$XDG_STATE_HOME/mode-pentest/windows.before"
+check "photo des fenêtres d'avant prise à on" test -f "$SNAP"
+off=$("$PENTEST" off 2>&1)
+check "ferme toutes les fenêtres du mode" grep -q "fermerait toutes les fenêtres ouvertes pendant le mode" <<<"$off"
+check "photo nettoyée après off"   bash -c '! test -f "'"$SNAP"'"'
+check "app-ids nettoyés après off"  bash -c '! test -f "'"$APPIDS"'"'
+
+echo "[4b] fermeture ciblée (close_all_windows=off, dry-run)"
+mkdir -p "$XDG_CONFIG_HOME/mode-pentest"
+printf 'close_all_windows = "off"\n' > "$XDG_CONFIG_HOME/mode-pentest/config.toml"
+"$PENTEST" on demo >/dev/null 2>&1
 off=$("$PENTEST" off 2>&1)
 check "close class:pentest-term"    grep -q 'window.close({ window = "class:pentest-term" })' <<<"$off"
 check "close class:pentest-browser" grep -q 'window.close({ window = "class:pentest-browser" })' <<<"$off"
-check "app-ids nettoyés après off"  bash -c '! test -f "'"$APPIDS"'"'
+rm -f "$XDG_CONFIG_HOME/mode-pentest/config.toml"
 
 echo "[5] wire_bar (édition shell.json sur copie temporaire)"
 SJ="$TMP/shell.json"

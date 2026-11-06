@@ -224,8 +224,19 @@ EOF
   if gum confirm "Enregistrer une machine cible dans le scope ?"; then
     local target; target=$(gum input --placeholder "IP de la cible (ex. 10.10.123.45)")
     if [[ -n "$target" ]]; then
-      lab_scope_add "$lab" "$target"; lab_journal "$lab" "SCOPE add (cible): $target"
-      ok "cible ajoutée au scope : $target"
+      # Nom de la room → enregistré (meta ROOM) et utilisé comme nom DNS local
+      # (« <room>.thm » dans /etc/hosts, confirmé, retiré à « pentest off »).
+      local room=""
+      room=$(gum input --placeholder "Nom de la room (ex. blue) — vide pour passer" || true)
+      room=$(printf '%s' "$room" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')
+      if [[ -n "$room" ]]; then
+        local host; host=$(printf '%s' "$room" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9.-' '-' | sed -E 's/-+/-/g; s/^-+//; s/-+$//')
+        room_set "$lab" "$room" || true
+        target_set "$lab" "$target" "$host" || true   # scope + journal + /etc/hosts
+      else
+        lab_scope_add "$lab" "$target"; lab_journal "$lab" "SCOPE add (cible): $target"
+        ok "cible ajoutée au scope : $target"
+      fi
       if gum confirm "Tester la connectivité (un seul ping) ?"; then
         ping -c1 -W2 "$target" >/dev/null 2>&1 \
           && ok "cible joignable ($target)." \
