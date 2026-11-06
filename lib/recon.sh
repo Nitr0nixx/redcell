@@ -68,6 +68,73 @@ recon_in_scope() { # <lab> <target>
   return 1
 }
 
+# --- Échéance du périmètre (clause « until ») ---------------------------------
+# Une entrée de scope peut porter une échéance : « 10.10.0.0/16 until 2026-11-07 »
+# (ou « …T18:00 »). Passé ce moment, elle ne couvre plus rien.
+
+# Horodatage après 'until' dans une ligne de scope (vide si aucun).
+_scope_entry_expiry() { # <ligne>
+  local line="$1"
+  [[ "$line" =~ [[:space:]]until[[:space:]]+([^[:space:]#]+) ]] && printf '%s' "${BASH_REMATCH[1]}"
+}
+
+# Vrai (0) si <target> est couvert par AU MOINS une entrée encore valide (non
+# expirée), ou par la cible définie du lab (jamais d'échéance). Une échéance
+# illisible est considérée valide (fail-open ; signalée par ailleurs).
+scope_valid_cover() { # <lab> <target>
+  local lab="$1" target="$2" entry spec exp now exp_epoch match
+  now=$(date +%s)
+  local tip tname thost
+  tip=$(meta_get "$lab" TARGET_IP   2>/dev/null || true)
+  tname=$(meta_get "$lab" TARGET_NAME 2>/dev/null || true)
+  thost=$(meta_get "$lab" TARGET_HOST 2>/dev/null || true)
+  [[ -n "$tip"   && "$target" == "$tip"   ]] && return 0
+  [[ -n "$tname" && "$target" == "$tname" ]] && return 0
+  [[ -n "$thost" && "$target" == "$thost" ]] && return 0
+  while IFS= read -r entry; do
+    [[ -z "$entry" ]] && continue
+    spec=${entry%%[[:space:]]*}
+    match=0
+    [[ "$target" == "$spec" ]] && match=1
+    if [[ $match -eq 0 && "$spec" == */* ]] && _recon_is_ipv4 "$target"; then
+      _recon_ip_in_cidr "$target" "$spec" && match=1
+    fi
+    [[ $match -eq 1 ]] || continue
+    exp=$(_scope_entry_expiry "$entry")
+    [[ -z "$exp" ]] && return 0                       # pas d'échéance = valide
+    exp_epoch=$(date -d "$exp" +%s 2>/dev/null || echo 0)
+    [[ "$exp_epoch" -eq 0 || "$now" -lt "$exp_epoch" ]] && return 0
+  done < <(lab_scope_targets "$lab")
+  return 1
+}
+
+# Lignes de scope dont l'échéance est passée (pour avertir à l'activation).
+scope_expired_entries() { # <lab>
+  local lab="$1" entry exp now exp_epoch; now=$(date +%s)
+  while IFS= read -r entry; do
+    exp=$(_scope_entry_expiry "$entry"); [[ -n "$exp" ]] || continue
+    exp_epoch=$(date -d "$exp" +%s 2>/dev/null || echo 0)
+    [[ "$exp_epoch" -gt 0 && "$now" -ge "$exp_epoch" ]] && printf '%s\n' "$entry"
+  done < <(lab_scope_targets "$lab")
+}
+
+# --- Journal d'audit des sondes actives ---------------------------------------
+# Trace append-only : chaque sonde émise (commande + cible + horodatage). Le lab
+# et la cible courants sont posés par recon_guard juste avant d'autoriser.
+_recon_audit() { # <cmd...>
+  [[ "$PENTEST_DRY_RUN" == "1" ]] && return 0
+  [[ -n "${RECON_AUDIT_LAB:-}" ]] || return 0
+  local f; f="$(lab_dir "$RECON_AUDIT_LAB")/audit.log"
+  mkdir -p "$(dirname "$f")"
+  printf '%s\tcible=%s\t%s\n' "$(date +'%Y-%m-%dT%H:%M:%S%z')" "${RECON_AUDIT_TARGET:-?}" "$*" >> "$f"
+}
+
+# Affiche le journal d'audit du lab.
+recon_audit_show() { # <lab>
+  local f; f="$(lab_dir "$1")/audit.log"
+  if [[ -s "$f" ]]; then cat "$f"; else echo "aucune sonde enregistrée pour « $1 » (audit.log vide)."; fi
+}
+
 # --- Préconditions ------------------------------------------------------------
 
 # Résout la cible : argument explicite, sinon TARGET_IP du lab.
@@ -94,6 +161,14 @@ recon_guard() { # <lab> <target> [--yes]
     return 3
   fi
 
+  # 1bis. Échéance — le périmètre couvre la cible, mais toutes les entrées qui
+  # la couvrent ont expiré (clause « until »). On refuse, distinctement.
+  if ! scope_valid_cover "$lab" "$target"; then
+    err "REFUS : le périmètre couvrant « $target » a EXPIRÉ (clause 'until' dans scope/scope.md)."
+    warn "Prolonge l'échéance (pentest scope add $target until <date>) ou retire la clause si tu y es toujours autorisé."
+    return 3
+  fi
+
   # 2. VPN — la reco doit passer par le tunnel du lab, pas ton IP réelle.
   if [[ "$(cfg_get recon_require_vpn on)" == "on" && "$PENTEST_DRY_RUN" != "1" ]]; then
     if [[ -z "$(vpn_tun_ip)" ]]; then
@@ -114,6 +189,9 @@ recon_guard() { # <lab> <target> [--yes]
     fi
     [[ "$go" == 1 ]] || { warn "annulé."; return 1; }
   fi
+
+  # Autorisé : on arme le journal d'audit (lab + cible) pour les sondes à venir.
+  RECON_AUDIT_LAB="$lab"; RECON_AUDIT_TARGET="$target"
   return 0
 }
 
@@ -138,6 +216,7 @@ _recon_run() { # <outfile> <cmd...>
     return 0
   fi
   mkdir -p "$(dirname "$out")"
+  _recon_audit "$@"
   log "→ $*"
   # tee pour garder la trace ET voir défiler ; on capture le code de la cmd.
   "$@" 2>&1 | tee "$out"
@@ -192,6 +271,7 @@ recon_liveness() { # <lab> <target>
   if [[ "$PENTEST_DRY_RUN" == "1" ]]; then
     printf '%s[dry-run]%s ping -c1 -W2 %s\n' "$_c_dim" "$_c_reset" "$t"; return 0
   fi
+  _recon_audit "ping -c1 -W2 $t"
   if ping -c1 -W2 "$t" >/dev/null 2>&1; then
     ok "hôte joignable (ICMP) : $t"
   else

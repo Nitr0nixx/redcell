@@ -205,6 +205,7 @@ pentest recon 10.10.123.45    # idem, cible explicite (doit être dans le scope)
 pentest recon ports <cible>   # seulement : nmap ports + services/versions
 pentest recon web <cible> 80  # seulement : empreinte + découverte de contenu web
 pentest recon show            # résumé des reco du lab
+pentest recon audit           # journal des sondes émises (horodate, cible, commande)
 ```
 
 L'enchaînement (niveau *énumération + découverte web légère*) :
@@ -236,6 +237,23 @@ indique `pentest install nmap` (etc.). Clés de config : `recon_require_vpn`,
 > Rappel scope : `recon` est volontairement incapable de sonder une cible hors
 > du périmètre que tu as déclaré. C'est le garde‑fou qui en fait un outil de
 > labs **autorisés**, pas un scanner généraliste.
+
+### Échéance du périmètre & journal d'audit
+
+Deux renforts du garde‑fou, pensés pour les labs **temps‑limités** (une room
+TryHackMe active quelques heures) et pour **prouver** ce que tu as touché :
+
+- **Échéance (`until`)** : une entrée de scope peut porter une date limite —
+  `pentest scope add 10.10.0.0/16 until 2026-11-07` (ou `…until 2026-11-07T18:00`).
+  Passé ce moment, l'entrée **ne couvre plus** la cible : `recon` refuse
+  distinctement (« périmètre EXPIRÉ »). Une cible reste autorisée tant qu'au
+  moins une entrée **non expirée** (ou la cible définie, sans échéance) la
+  couvre. Les entrées expirées sont **signalées à l'activation** du mode. La
+  date est validée à l'ajout (format illisible → refusé).
+- **Journal d'audit** (`<lab>/audit.log`, en **ajout seul**) : chaque sonde
+  réellement émise y est tracée — **horodatage, cible, commande exacte**.
+  `pentest recon audit` l'affiche. De quoi documenter précisément le périmètre
+  et le déroulé d'une mission.
 
 ## Limites connues
 

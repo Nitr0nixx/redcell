@@ -82,6 +82,20 @@ echo "[10] recon show : vide au départ"
 O=$("$PENTEST" recon show 2>&1)
 check "message 'aucune reco'"          grep -q "aucune reco enregistrée" <<<"$O"
 
+echo "[10b] échéance de scope (clause « until »)"
+printf '10.55.55.55 until 2000-01-01\n10.66.66.66 until 2099-01-01\n' >> "$LABDIR/scope/scope.md"
+O=$(PENTEST_DRY_RUN=1 "$PENTEST" recon 10.55.55.55 2>&1; echo "rc=$?")
+check "cible à échéance passée refusée"    grep -q "EXPIRÉ" <<<"$O"
+check "refus = code non nul"               bash -c '! grep -q "rc=0" <<<"$0"' "$O"
+check "aucun ping (refus avant sonde)"     bash -c '! grep -q "ping -c1 -W2 10.55.55.55" <<<"$0"' "$O"
+O=$(PENTEST_DRY_RUN=1 "$PENTEST" recon 10.66.66.66 2>&1)
+check "cible à échéance future acceptée"   bash -c '! grep -q "EXPIRÉ" <<<"$0"' "$O"
+check "reco planifiée (ping)"              grep -q "ping -c1 -W2 10.66.66.66" <<<"$O"
+O=$("$PENTEST" scope add 10.77.77.77 until pasunedate 2>&1; echo "rc=$?")
+check "scope add : date illisible rejetée" grep -q "échéance illisible" <<<"$O"
+# On retire les lignes d'essai pour ne pas perturber les sections suivantes.
+sed -i '/^10\.55\.55\.55 until/d; /^10\.66\.66\.66 until/d' "$LABDIR/scope/scope.md"
+
 echo "[11] CIDR : logique d'appartenance"
 # Teste directement recon_in_scope via sourcing (unités fines).
 O=$(PENTEST_DRY_RUN=1 bash -c '
@@ -161,6 +175,9 @@ check "en-tête de tableau présent"    grep -q "| Port | Proto | Service | Vers
 check "ligne ssh (service+version)"   grep -q "| 22 | tcp | ssh | OpenSSH 7.6p1 |" "$SUM"
 check "ligne http (service+version)"  grep -q "| 80 | tcp | http | Apache httpd 2.4.29 |" "$SUM"
 check "services-latest.tsv écrit"     test -s "$LABDIR/scans/services-latest.tsv"
+check "audit.log créé"                test -s "$LABDIR/audit.log"
+check "audit : commande nmap tracée"  grep -q "nmap" "$LABDIR/audit.log"
+check "audit : cible tracée"          grep -q "cible=10.10.10.10" "$LABDIR/audit.log"
 "$PENTEST" report >/dev/null 2>&1
 check "writeup reprend le tableau"    grep -q "| 22 | tcp | ssh |" "$LABDIR/report/writeup.md"
 
