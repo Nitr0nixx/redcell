@@ -145,13 +145,17 @@ Isolation des outils — options comparées
   3) Distrobox + Podman rootless (RECOMMANDÉ) : les outils vivent dans un
      conteneur jetable ; l'hôte reste propre ; rootless = pas de root pour l'outillage.
 
-Mise en place (à lancer TOI-MÊME, avec ton accord — rien n'est exécuté ici) :
+Mise en place — câblée dans `pentest box` (tu installes podman/distrobox + les
+outils toi-même ; rien n'est exécuté ici) :
 
-  sudo pacman -S --needed podman distrobox
-  distrobox create --name pentest --image docker.io/blackarchlinux/blackarch:latest
-  distrobox enter pentest
+  sudo pacman -S --needed podman distrobox   # une fois
+  pentest box create                         # crée la boîte (image BlackArch)
+  pentest box shell                          # entre dedans
   #   puis, dans la boîte : sudo pacman -S nmap ffuf ...  (BlackArch)
+  #   enfin, dans config.toml : recon_runner = "box"
+  #   -> `pentest recon` lance alors ses outils DANS la boîte, l'hôte reste propre.
 
-Le mode pentest prépare l'environnement : il ne lance aucun outil offensif.
+`pentest box status` montre l'état. Le mode prépare l'environnement : aucun
+outil offensif n'est lancé par le projet lui-même.
 EOF
 }

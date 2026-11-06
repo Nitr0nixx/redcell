@@ -197,6 +197,12 @@ recon_guard() { # <lab> <target> [--yes]
 
 # Vérifie la présence d'un outil ; sinon explique comment l'installer (sans l'installer).
 recon_need() { # <binaire> <paquet-hint>
+  # Runner conteneur : on vérifie l'outil DANS la boîte, pas sur l'hôte.
+  if box_runner_ready; then
+    distrobox enter "$(box_name)" -- command -v "$1" >/dev/null 2>&1 && return 0
+    warn "outil manquant dans la boîte « $(box_name) » : $1 — entre dedans (pentest box shell) puis installe-le (sudo pacman -S $1)."
+    return 1
+  fi
   command -v "$1" >/dev/null 2>&1 && return 0
   warn "outil manquant : $1 — installe-le avec : pentest install ${2:-$1}"
   return 1
@@ -211,15 +217,18 @@ _recon_ts() { date +'%Y%m%d-%H%M%S'; }
 # enregistrant la sortie dans <outfile> (et à l'écran). Renvoie le code de la cmd.
 _recon_run() { # <outfile> <cmd...>
   local out="$1"; shift
+  # Préfixe conteneur éventuel (recon_runner=box) : « distrobox enter <nom> -- ».
+  local -a pfx=(); read -ra pfx <<<"$(recon_exec_prefix)"
   if [[ "$PENTEST_DRY_RUN" == "1" ]]; then
-    printf '%s[dry-run]%s %s  > %s\n' "$_c_dim" "$_c_reset" "$*" "$out"
+    printf '%s[dry-run]%s %s%s  > %s\n' "$_c_dim" "$_c_reset" \
+      "${pfx[*]:+${pfx[*]} }" "$*" "$out"
     return 0
   fi
   mkdir -p "$(dirname "$out")"
-  _recon_audit "$@"
-  log "→ $*"
+  _recon_audit "${pfx[*]:+${pfx[*]} }$*"
+  log "→ ${pfx[*]:+${pfx[*]} }$*"
   # tee pour garder la trace ET voir défiler ; on capture le code de la cmd.
-  "$@" 2>&1 | tee "$out"
+  "${pfx[@]}" "$@" 2>&1 | tee "$out"
   return "${PIPESTATUS[0]}"
 }
 
@@ -403,6 +412,10 @@ recon_full() { # <lab> <target> [--yes]
   recon_guard "$lab" "$t" "$yes" || return $?
 
   ok "reconnaissance de « $t » (lab : $lab) — scope vérifié."
+  if [[ "$(cfg_get recon_runner host)" == "box" ]]; then
+    if box_runner_ready; then log "outils exécutés dans la boîte « $(box_name) » (hôte préservé)."
+    else warn "recon_runner=box mais la boîte n'est pas prête → repli sur l'hôte (pentest box status)."; fi
+  fi
   recon_liveness "$lab" "$t"
 
   local ports; ports=$(recon_ports "$lab" "$t")

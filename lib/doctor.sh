@@ -123,6 +123,11 @@ doctor_report() {
     d_line warn "ni fzf ni gum" "pentest install tombera en mode non interactif"
   fi
   d_cmd wl-copy warn "copie presse-papier (pentest ip) — paquet wl-clipboard"
+  # Runner conteneur (recon_runner=box) : signaler s'il est demandé mais pas prêt.
+  if [[ "$(cfg_get recon_runner host)" == "box" ]]; then
+    if box_runner_ready; then d_line ok "runner conteneur prêt" "boîte $(box_name)"
+    else d_line warn "recon_runner=box mais boîte non prête" "pentest box status/create ; repli hôte"; fi
+  fi
 
   # --- État runtime --------------------------------------------------------
   d_head "État runtime"

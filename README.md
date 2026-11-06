@@ -74,6 +74,25 @@ toi-même :
   pour l'outillage. Alternatives : paquets Arch (simple mais pollue l'hôte) ou
   dépôt BlackArch (complet mais gros dépôt tiers sur l'hôte).
 
+### Conteneur d'outils : `pentest box`
+
+L'option recommandée est **câblée**, pas seulement expliquée. Tu installes
+podman/distrobox et les outils toi-même (rien d'auto), le mode orchestre le reste :
+
+```bash
+sudo pacman -S --needed podman distrobox   # une fois
+pentest box create                         # crée la boîte (image BlackArch par défaut)
+pentest box shell                          # entre dedans → sudo pacman -S nmap ffuf …
+pentest box status                         # état : distrobox/podman, boîte, runner
+pentest box rm                             # supprime la boîte (confirmation)
+```
+
+Puis, dans `config.toml`, **`recon_runner = "box"`** : `pentest recon` lance alors
+ses outils **dans la boîte** (`distrobox enter … --`), l'hôte reste propre — la
+commande exacte (préfixe compris) est tracée dans `audit.log`. Si la boîte n'est
+pas prête, la reco **retombe sur l'hôte** avec un avertissement (jamais de panne
+silencieuse). Clés : `recon_runner` (`host`/`box`), `box_name`, `box_image`.
+
 ### Interface d'installation : `pentest install`
 
 Menu **TUI (fzf)** pour installer facilement les outils cyber manquants :
@@ -391,6 +410,8 @@ sauvegarde ; `--no-bar` saute cette étape, `--uninstall` le retire.
 | `vpn_dir` | dossier supplémentaire où chercher les `.ovpn` | `~/Downloads` |
 | `vpn_picker_on_start` | `on` = ouvre l'assistant VPN à l'activation | `on` |
 | `manage_hosts` | `on` = `pentest target <ip> <nom>` gère une entrée `/etc/hosts` | `on` |
+| `recon_runner` | `host` ou `box` = lance les outils de reco dans la boîte Distrobox | `host` |
+| `box_name` / `box_image` | nom et image de la boîte `pentest box` | `pentest` / BlackArch |
 
 ## Bilan de santé : `pentest doctor`
 
